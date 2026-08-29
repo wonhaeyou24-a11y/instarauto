@@ -1,5 +1,349 @@
 [
   {
+    "id": "1787970042140",
+    "topic": "가족여행 트렌드 인사이트",
+    "caption": "요즘 가족여행은 어떻게 달라졌을까요? 단순한 관광을 넘어 쉼과 체험, 그리고 3세대가 함께하는 여행까지! 달라진 최신 가족여행 핵심 트렌드 3가지를 정리해 드립니다. 사랑하는 가족과 함께 떠날 다음 여행 플랜에 참고해 보세요.\n\n#가족여행 #가족여행트렌드 #여행트렌드 #국내가족여행 #해외가족여행 #가족휴가 #주말나들이 #힐링여행 #아이와함께가볼만한곳 #가족추억 #육아맘 #육아소통 #여행스타그램 #가족스타그램 #3세대가족여행",
+    "bodyText": "요즘 가족여행은 어떻게 달라졌을까요? 단순한 관광을 넘어 쉼과 체험, 그리고 3세대가 함께하는 여행까지! 달라진 최신 가족여행 핵심 트렌드 3가지를 정리해 드립니다. 사랑하는 가족과 함께 떠날 다음 여행 플랜에 참고해 보세요.",
+    "hashtags": {
+      "core": [
+        "#가족여행",
+        "#가족여행트렌드",
+        "#여행트렌드",
+        "#국내가족여행",
+        "#해외가족여행"
+      ],
+      "expand": [
+        "#가족휴가",
+        "#주말나들이",
+        "#힐링여행",
+        "#아이와함께가볼만한곳",
+        "#가족추억"
+      ],
+      "target": [
+        "#육아맘",
+        "#육아소통",
+        "#여행스타그램",
+        "#가족스타그램",
+        "#3세대가족여행"
+      ]
+    },
+    "imageUrl": "/generated/slide_1787970041060_1.png",
+    "imageUrls": [
+      "/generated/slide_1787970041060_1.png",
+      "/generated/slide_1787970041225_2.png",
+      "/generated/slide_1787970041480_3.png",
+      "/generated/slide_1787970041884_4.png",
+      "/generated/slide_1787970042012_5.png"
+    ],
+    "layout": "editorial",
+    "slides": [
+      {
+        "type": "cover",
+        "imageKeyword": "family vacation",
+        "title": "요즘 가족들은 어디로 어떻게 떠날까?",
+        "subtitle": "한눈에 보는 가족여행 트렌드 인사이트 TOP 3",
+        "imageUrl": "https://images.unsplash.com/photo-1758900437523-209e171e911c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8ZmFtaWx5JTIwdmFjYXRpb258ZW58MHwyfHx8MTc4Nzk3MDAzOHww&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "luxury resort",
+        "step": "01",
+        "title": "올인클루시브 & 웰니스 힐링",
+        "content": "이동과 동선 계획의 부담을 줄여주는 올인클루시브 리조트가 대세! 온 가족이 한곳에서 편안하게 휴식하며 웰니스 프로그램을 즐기는 쉼 중심의 여행이 인기를 끌고 있습니다.",
+        "imageUrl": "https://images.unsplash.com/photo-1518860308377-800f02d5498a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8bHV4dXJ5JTIwcmVzb3J0fGVufDB8Mnx8fDE3ODc5NzAwMzh8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "kids experience",
+        "step": "02",
+        "title": "아이 맞춤형 런케이션(Learn-cation)",
+        "content": "단순 구경을 넘어 현지 쿠킹 클래스, 생태 탐방 등 교육과 재미를 모두 잡는 체험형 여행이 늘고 있습니다. 아이의 성장을 돕는 스페셜 액티비티가 핵심 선호 요소입니다.",
+        "imageUrl": "https://images.unsplash.com/photo-1769098633022-bc8141d55f8b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8a2lkcyUyMGV4cGVyaWVuY2V8ZW58MHwyfHx8MTc4Nzk3MDAzOXww&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "multi generation family",
+        "step": "03",
+        "title": "조부모 동반 3세대 트래블",
+        "content": "부모, 자녀, 조부모까지 함께 떠나는 대가족 여행이 급증했습니다. 연령대별 취향을 모두 충족할 수 있는 독채 풀빌라 및 프라이빗 투어 상품의 수요가 매우 높아졌습니다.",
+        "imageUrl": "https://images.unsplash.com/photo-1622314128145-8ada937685c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8bXVsdGklMjBnZW5lcmF0aW9uJTIwZmFtaWx5fGVufDB8Mnx8fDE3ODc5NzAwNDB8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "outro",
+        "imageKeyword": "family sunset beach",
+        "title": "다음 가족여행, 저장해두고 참고해 보세요!",
+        "subtitle": "유용한 여행 정보가 더 보고 싶다면 팔로우 & 좋아요",
+        "imageUrl": "https://images.unsplash.com/photo-1528256507509-cc4facea43f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8ZmFtaWx5JTIwc3Vuc2V0JTIwYmVhY2h8ZW58MHwyfHx8MTc4Nzk3MDA0MHww&ixlib=rb-4.1.0&q=80&w=1080"
+      }
+    ],
+    "status": "DRAFT",
+    "createdAt": "2026-08-29T02:20:42.140Z"
+  },
+  {
+    "id": "1787970029864",
+    "category": "가족여행",
+    "topic": "수동 작성글",
+    "caption": "선선한 가을 바람이 찾아오는 계절! 2026년 가을에 떠나면 가장 아름다운 국내 감성 여행지 3곳을 엄선했습니다. 붉게 물든 단풍터널부터 황금빛 억새 물결까지, 이번 가을에는 사랑하는 사람과 함께 소중한 추억을 만들어보세요.\n\n#가을여행 #가을여행지 #단풍여행 #단풍명소 #가을가볼만한곳 #국내여행 #여행스타그램 #가을풍경 #힐링여행 #여행코스추천 #주말여행 #가을데이트 #커플여행 #가족여행 #감성여행",
+    "bodyText": "선선한 가을 바람이 찾아오는 계절! 2026년 가을에 떠나면 가장 아름다운 국내 감성 여행지 3곳을 엄선했습니다. 붉게 물든 단풍터널부터 황금빛 억새 물결까지, 이번 가을에는 사랑하는 사람과 함께 소중한 추억을 만들어보세요.",
+    "hashtags": {
+      "core": [
+        "#가을여행",
+        "#가을여행지",
+        "#단풍여행",
+        "#단풍명소",
+        "#가을가볼만한곳"
+      ],
+      "expand": [
+        "#국내여행",
+        "#여행스타그램",
+        "#가을풍경",
+        "#힐링여행",
+        "#여행코스추천"
+      ],
+      "target": [
+        "#주말여행",
+        "#가을데이트",
+        "#커플여행",
+        "#가족여행",
+        "#감성여행"
+      ]
+    },
+    "imageUrl": "https://images.unsplash.com/photo-1711017791515-871d74b83286?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8YXV0dW1uJTIwdHJhdmVsJTIwa29yZWF8ZW58MHwyfHx8MTc4Nzk3MDAyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+    "candidateImages": [
+      "https://images.unsplash.com/photo-1711017791515-871d74b83286?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8YXV0dW1uJTIwdHJhdmVsJTIwa29yZWF8ZW58MHwyfHx8MTc4Nzk3MDAyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1749733600983-93d2739513d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8Mnx8YXV0dW1uJTIwdHJhdmVsJTIwa29yZWF8ZW58MHwyfHx8MTc4Nzk3MDAyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1582270284962-bb17c53a3a54?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8M3x8YXV0dW1uJTIwdHJhdmVsJTIwa29yZWF8ZW58MHwyfHx8MTc4Nzk3MDAyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1627262212996-f0af7402c9e1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8NHx8YXV0dW1uJTIwdHJhdmVsJTIwa29yZWF8ZW58MHwyfHx8MTc4Nzk3MDAyMXww&ixlib=rb-4.1.0&q=80&w=1080"
+    ],
+    "imageUrls": [
+      "/generated/slide_1787969660678_1.png",
+      "/generated/slide_1787969661386_2.png",
+      "/generated/slide_1787969661545_3.png",
+      "/generated/slide_1787969661995_4.png",
+      "/generated/slide_1787969662071_5.png"
+    ],
+    "layout": "editorial",
+    "slides": [],
+    "status": "DRAFT",
+    "updatedAt": "2026-08-29T02:20:29.864Z",
+    "createdAt": "2026-08-29T02:20:29.864Z"
+  },
+  {
+    "id": "1787969662258",
+    "topic": "부모님 모시고 갔다가 칭찬 폭발한 3대 가족 추천 여행지 TOP 4",
+    "caption": "선선한 가을 바람이 찾아오는 계절! 2026년 가을에 떠나면 가장 아름다운 국내 감성 여행지 3곳을 엄선했습니다. 붉게 물든 단풍터널부터 황금빛 억새 물결까지, 이번 가을에는 사랑하는 사람과 함께 소중한 추억을 만들어보세요.\n\n#가을여행 #가을여행지 #2026가을여행 #단풍여행 #국내여행 #여행스타그램 #단풍명소 #가을풍경 #주말여행 #힐링여행 #가을데이트 #커플여행 #가족여행 #가을가볼만한곳 #여행코스추천",
+    "bodyText": "선선한 가을 바람이 찾아오는 계절! 2026년 가을에 떠나면 가장 아름다운 국내 감성 여행지 3곳을 엄선했습니다. 붉게 물든 단풍터널부터 황금빛 억새 물결까지, 이번 가을에는 사랑하는 사람과 함께 소중한 추억을 만들어보세요.",
+    "hashtags": {
+      "core": [
+        "#가을여행",
+        "#가을여행지",
+        "#2026가을여행",
+        "#단풍여행",
+        "#국내여행"
+      ],
+      "expand": [
+        "#여행스타그램",
+        "#단풍명소",
+        "#가을풍경",
+        "#주말여행",
+        "#힐링여행"
+      ],
+      "target": [
+        "#가을데이트",
+        "#커플여행",
+        "#가족여행",
+        "#가을가볼만한곳",
+        "#여행코스추천"
+      ]
+    },
+    "imageUrl": "/generated/slide_1787969661995_4.png",
+    "imageUrls": [
+      "/generated/slide_1787969660678_1.png",
+      "/generated/slide_1787969661386_2.png",
+      "/generated/slide_1787969661545_3.png",
+      "/generated/slide_1787969661995_4.png",
+      "/generated/slide_1787969662071_5.png"
+    ],
+    "layout": "editorial",
+    "slides": [
+      {
+        "type": "cover",
+        "imageKeyword": "autumn forest",
+        "title": "2026년 가을, 꼭 떠나야 할 국내 감성 여행지 TOP 3",
+        "subtitle": "붉은 단풍과 황금빛 억새가 반기는 최고의 가을 코스",
+        "imageUrl": "https://images.unsplash.com/photo-1508162942367-e4dd4cd67513?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8YXV0dW1uJTIwZm9yZXN0fGVufDB8Mnx8fDE3ODc5Njk2NTd8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "autumn temple",
+        "step": "01",
+        "title": "경주 불국사 & 단풍길",
+        "content": "고즈넉한 기와지붕 아래 붉게 물든 단풍나무가 장관을 이룹니다. 가을 정취를 느끼며 산책하기에 최고의 명소입니다.",
+        "imageUrl": "https://images.unsplash.com/photo-1760801700268-17d3b0a863c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8YXV0dW1uJTIwdGVtcGxlfGVufDB8Mnx8fDE3ODc5Njk2NTh8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "pampas grass",
+        "step": "02",
+        "title": "제주 새별오름 억새밭",
+        "content": "황금빛 억새 물결이 오름 전체를 감싸 안는 제주의 대표 가을 코스입니다. 노을 질 무렵 방문하면 인생샷을 건질 수 있습니다.",
+        "imageUrl": "https://images.unsplash.com/photo-1781677772936-7460ba133f78?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8cGFtcGFzJTIwZ3Jhc3N8ZW58MHwyfHx8MTc4Nzk2OTY1OXww&ixlib=rb-4.1.0&q=80&w=1080"
+      },
+      {
+        "type": "body",
+        "imageKeyword": "maple trail",
+        "step": "03",
+        "title": "강원도 오대산 선재길",
+        "content": "알록달록한 단풍 터널을 따라 걷는 가벼운 트레킹 코스입니다. 맑은 계곡 소리와 함께 일상의 피로를 말끔히 씻어내보세요.",
+        "imageUrl": "https://placehold.co/600x600/1e293b/ffffff?text=maple%20trail+1"
+      },
+      {
+        "type": "outro",
+        "imageKeyword": "autumn sunset",
+        "title": "저장해두고 필요할 때 꺼내보세요!",
+        "subtitle": "좋아요 & 팔로우는 알찬 여행 콘텐츠에 큰 힘이 됩니다",
+        "imageUrl": "https://images.unsplash.com/photo-1633631102628-b12d4ae9a834?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8YXV0dW1uJTIwc3Vuc2V0fGVufDB8Mnx8fDE3ODc5Njk2NjB8MA&ixlib=rb-4.1.0&q=80&w=1080"
+      }
+    ],
+    "status": "DRAFT",
+    "createdAt": "2026-08-29T02:14:22.259Z",
+    "category": "가족여행",
+    "candidateImages": [
+      "https://images.unsplash.com/photo-1758900437523-209e171e911c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8RmFtaWx5VHJhdmVsfGVufDB8Mnx8fDE3ODc5Njk2MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1720188430567-201ff6364ba1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8Mnx8RmFtaWx5VHJhdmVsfGVufDB8Mnx8fDE3ODc5Njk2MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1559213606-41c9054a460e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8M3x8RmFtaWx5VHJhdmVsfGVufDB8Mnx8fDE3ODc5Njk2MTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1736077722270-ea23d7abfdf1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8NHx8RmFtaWx5VHJhdmVsfGVufDB8Mnx8fDE3ODc5Njk2MTh8MA&ixlib=rb-4.1.0&q=80&w=1080"
+    ],
+    "updatedAt": "2026-08-29T02:15:12.714Z"
+  },
+  {
+    "id": "1787968546505",
+    "category": "가족여행",
+    "topic": "3대가 모두 만족해 칭찬 폭발한 실패 없는 가족 여행지 TOP 4",
+    "caption": "🚨 \"3대 가족 여행 갔다 싸우고 돌아왔다?\"\n2026년 단풍 물드는 이번 가을엔 절대 그럴 일 없습니다!💥\n\n할머니 관절 걱정 NO! 👵\n아이들 지루함 NO! 👶\n부모님 피로감 NO! 👩👨\n\n까다로운 3대의 입맛과 체력을 모두 사로잡아\n칭찬 폭발했던 **실패 없는 가족 여행지 TOP 4** 대공개!📌\n\n───\n\n🌾 1. 제주 서귀포 & 한림 (억새&핑크뮬리)\n- 휠체어, 유모차도 편하게 다니는 데크길 완비!\n- 할머니는 억새밭 인생샷, 아이들은 감귤 따기 체험🍊\n- 남녀노소 호불호 없는 만능 가을 여행지!\n\n🍁 2. 경주 (역사와 단풍의 힐링)\n- 불국사·첨성대 붉은 단풍은 어르신들 최애 코스🍂\n- 아이들은 신나는 역사 탐험, 부모님은 황리단길 핫플 투어!\n- 평지가 많아 온 가족이 천천히 걷기 perfect!\n\n🏞️ 3. 단양 (단양강 잔도길&스카이워크)\n- 남한강 절벽 따라 걷는 데크길이라 무릎 부담 Zero!🚶‍♂️\n- 셔틀버스로 편하게 올라가는 탁 트인 가을 산 뷰 맛집!\n- 시원한 가을바람 맞으며 힐링하기 딱 좋은 곳!\n\n♨️ 4. 일본 후쿠오카 & 유후인 (가까운 해외 료칸)\n- 비행시간 단 1시간! 어르신과 아이 모두 피로감 최소화✈️\n- 프라이빗 료칸 온천으로 부모님 효도 완벽 성공!\n- 아기자기한 온천 마을 산책과 식도락 여행까지 완벽!\n\n───\n\n🍂 2026년 가을, 온 가족에게 칭찬받을 준비 되셨나요?\n지금 바로 **[저장]**해두고 완벽한 3대 가족 여행 계획해 보세요!❤️\n\n#가족여행 #3대가족여행 #가을여행지 #2026가을여행 #가족여행지추천 #효도여행 #국내여행지추천 #단풍여행 #해외가족여행 #제주도가족여행 #부모님모시고여행 #아이와함께가볼만한곳 #육아맘 #가족나들이 #주말가족여행",
+    "bodyText": "🚨 \"3대 가족 여행 갔다 싸우고 돌아왔다?\"\n2026년 단풍 물드는 이번 가을엔 절대 그럴 일 없습니다!💥\n\n할머니 관절 걱정 NO! 👵\n아이들 지루함 NO! 👶\n부모님 피로감 NO! 👩👨\n\n까다로운 3대의 입맛과 체력을 모두 사로잡아\n칭찬 폭발했던 **실패 없는 가족 여행지 TOP 4** 대공개!📌\n\n───\n\n🌾 1. 제주 서귀포 & 한림 (억새&핑크뮬리)\n- 휠체어, 유모차도 편하게 다니는 데크길 완비!\n- 할머니는 억새밭 인생샷, 아이들은 감귤 따기 체험🍊\n- 남녀노소 호불호 없는 만능 가을 여행지!\n\n🍁 2. 경주 (역사와 단풍의 힐링)\n- 불국사·첨성대 붉은 단풍은 어르신들 최애 코스🍂\n- 아이들은 신나는 역사 탐험, 부모님은 황리단길 핫플 투어!\n- 평지가 많아 온 가족이 천천히 걷기 perfect!\n\n🏞️ 3. 단양 (단양강 잔도길&스카이워크)\n- 남한강 절벽 따라 걷는 데크길이라 무릎 부담 Zero!🚶‍♂️\n- 셔틀버스로 편하게 올라가는 탁 트인 가을 산 뷰 맛집!\n- 시원한 가을바람 맞으며 힐링하기 딱 좋은 곳!\n\n♨️ 4. 일본 후쿠오카 & 유후인 (가까운 해외 료칸)\n- 비행시간 단 1시간! 어르신과 아이 모두 피로감 최소화✈️\n- 프라이빗 료칸 온천으로 부모님 효도 완벽 성공!\n- 아기자기한 온천 마을 산책과 식도락 여행까지 완벽!\n\n───\n\n🍂 2026년 가을, 온 가족에게 칭찬받을 준비 되셨나요?\n지금 바로 **[저장]**해두고 완벽한 3대 가족 여행 계획해 보세요!❤️",
+    "hashtags": {
+      "core": [
+        "#가족여행",
+        "#3대가족여행",
+        "#가을여행지",
+        "#2026가을여행",
+        "#가족여행지추천"
+      ],
+      "expand": [
+        "#효도여행",
+        "#국내여행지추천",
+        "#단풍여행",
+        "#해외가족여행",
+        "#제주도가족여행"
+      ],
+      "target": [
+        "#부모님모시고여행",
+        "#아이와함께가볼만한곳",
+        "#육아맘",
+        "#가족나들이",
+        "#주말가족여행"
+      ]
+    },
+    "imageUrl": "https://images.unsplash.com/photo-1758900437523-209e171e911c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8Mnx8ZmFtaWx5JTIwdHJhdmVsfGVufDB8Mnx8fDE3ODc5NjY4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    "candidateImages": [
+      "https://images.unsplash.com/photo-1460221584296-7b799eba9475?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8MXx8ZmFtaWx5JTIwdHJhdmVsfGVufDB8Mnx8fDE3ODc5NjY4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1758900437523-209e171e911c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8Mnx8ZmFtaWx5JTIwdHJhdmVsfGVufDB8Mnx8fDE3ODc5NjY4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1761638273522-36a24c3d1447?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8M3x8ZmFtaWx5JTIwdHJhdmVsfGVufDB8Mnx8fDE3ODc5NjY4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://images.unsplash.com/photo-1773567909773-96892f51ce26?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMDQ3MDgxfDB8MXxzZWFyY2h8NHx8ZmFtaWx5JTIwdHJhdmVsfGVufDB8Mnx8fDE3ODc5NjY4MzN8MA&ixlib=rb-4.1.0&q=80&w=1080"
+    ],
+    "imageUrls": [
+      "/generated/slide_1787968456183_1.png",
+      "/generated/slide_1787968456251_2.png",
+      "/generated/slide_1787968456318_3.png",
+      "/generated/slide_1787968456387_4.png",
+      "/generated/slide_1787968456457_5.png",
+      "/generated/slide_1787968456536_6.png"
+    ],
+    "layout": "modern",
+    "slides": [],
+    "status": "DRAFT",
+    "updatedAt": "2026-08-29T01:55:46.505Z",
+    "createdAt": "2026-08-29T01:55:46.505Z"
+  },
+  {
+    "id": "1787968456589",
+    "topic": "3대가 모두 만족해 칭찬 폭발한 실패 없는 가족 여행지 TOP 4",
+    "caption": "조부모님부터 어린 자녀까지 온 가족이 함께 떠나는 여행, 장소 선정이 가장 고민되셨죠? 👴👵👶\n\n이동 동선이 편리하고 볼거리와 먹거리가 풍부해 3대 모두 칭찬 연발하게 만든 검증된 국내 가족 여행지 TOP 4를 정리했습니다.\n\n다가오는 주말이나 연휴에는 사랑하는 가족들과 함께 남녀노소 즐거운 특별한 추억을 만들어보세요! 💕\n\n#가족여행 #가족여행지추천 #3대가족여행 #국내가족여행 #가족여행추천 #국내여행지추천 #부모님모시고여행 #아이와가볼만한곳 #주말나들이 #힐링여행 #육아맘 #가족휴가 #여행스타그램 #부모님효도여행 #주말가족여행",
+    "bodyText": "조부모님부터 어린 자녀까지 온 가족이 함께 떠나는 여행, 장소 선정이 가장 고민되셨죠? 👴👵👶\n\n이동 동선이 편리하고 볼거리와 먹거리가 풍부해 3대 모두 칭찬 연발하게 만든 검증된 국내 가족 여행지 TOP 4를 정리했습니다.\n\n다가오는 주말이나 연휴에는 사랑하는 가족들과 함께 남녀노소 즐거운 특별한 추억을 만들어보세요! 💕",
+    "hashtags": {
+      "core": [
+        "#가족여행",
+        "#가족여행지추천",
+        "#3대가족여행",
+        "#국내가족여행",
+        "#가족여행추천"
+      ],
+      "expand": [
+        "#국내여행지추천",
+        "#부모님모시고여행",
+        "#아이와가볼만한곳",
+        "#주말나들이",
+        "#힐링여행"
+      ],
+      "target": [
+        "#육아맘",
+        "#가족휴가",
+        "#여행스타그램",
+        "#부모님효도여행",
+        "#주말가족여행"
+      ]
+    },
+    "imageUrl": "/generated/slide_1787968456183_1.png",
+    "imageUrls": [
+      "/generated/slide_1787968456183_1.png",
+      "/generated/slide_1787968456251_2.png",
+      "/generated/slide_1787968456318_3.png",
+      "/generated/slide_1787968456387_4.png",
+      "/generated/slide_1787968456457_5.png",
+      "/generated/slide_1787968456536_6.png"
+    ],
+    "layout": "modern",
+    "slides": [
+      {
+        "type": "cover",
+        "title": "3대가 만족해\n칭찬 폭발한\n가족 여행지 TOP 4",
+        "subtitle": "조부모님부터 아이들까지 모두가 행복한 코스"
+      },
+      {
+        "type": "body",
+        "step": "01",
+        "title": "제주도",
+        "content": "남녀노소 누구나 좋아하는 명불허전 휴양지!\n완만한 산책로와 유모차/휠체어 이동이 편리한 관광지가 많아 온 가족이 편안하게 힐링하기 좋습니다."
+      },
+      {
+        "type": "body",
+        "step": "02",
+        "title": "강원도 강릉&속초",
+        "content": "탁 트인 동해 바다와 풍부한 식도락의 조화!\n중앙시장 먹방부터 편안한 소나무 숲길 산책, 오션뷰 카페까지 부모님과 아이 모두 만족합니다."
+      },
+      {
+        "type": "body",
+        "step": "03",
+        "title": "전라남도 여수",
+        "content": "화려한 여수 밤바다와 맛깔나는 남도 한상!\n해상케이블카로 편하게 전경을 감상하고, 신선한 해산물과 게장백반으로 입까지 즐거운 여행지입니다."
+      },
+      {
+        "type": "body",
+        "step": "04",
+        "title": "충청북도 단양",
+        "content": "웅장한 자연경관과 다채로운 볼거리!\n단양강 잔도길의 무장애 산책 코스부터 만천하스카이워크, 다누리아쿠아리움까지 알찬 일정이 가능합니다."
+      },
+      {
+        "type": "outro",
+        "title": "이번 주말, 온 가족 여행 떠나볼까요?",
+        "subtitle": "📌 저장해두고 가족 여행 계획할 때 꺼내보세요!"
+      }
+    ],
+    "status": "DRAFT",
+    "createdAt": "2026-08-29T01:54:16.590Z"
+  },
+  {
     "id": "1787958548043",
     "topic": "현실 육아 꿀팁",
     "caption": "육아책 100권 읽어도 절대 안 알려주는 '현실 육아 치트키' 3가지! 🚨 지금 모르면 오늘 밤도 육퇴는 물 건너갑니다.\n\n1️⃣ 떼쓸 땐 논리 금지, '뇌 리셋' 시키기 🧠\n울고불고할 때 백날 설명해 봐야 안 들려요! \"어? 저기 무슨 소리지?\" 하면서 뜬금없는 곳을 가리키세요. 시선 돌아가는 순간 상황 종료!\n\n2️⃣ 10분 컷 기절 목욕 루틴 🛁\n물 온도는 딱 38도 맞추고, 목욕 후엔 조명 끄고 로션 마사지 들어가세요. 수면 호르몬 폭발해서 눕히자마자 레드썬 합니다.\n\n3️⃣ 죄책감 내려놓고 '생존 육아' 모드 🍕\n너무 지친 날엔 배달음식 먹이고 영상 잠깐 보여줘도 괜찮아요. 엄마 아빠 멘탈이 살아있어야 아이한테도 한 번 더 웃어줄 수 있습니다.\n\n오늘 밤 1시간 빠른 육퇴를 원한다면 지금 바로 저장하고 써먹어 보세요! 🏃💨\n\n#육아꿀팁 #현실육아 #육아치트키 #육퇴 #육아스타그램",
@@ -12,35 +356,5 @@
     ],
     "status": "DRAFT",
     "createdAt": "2026-08-28T23:09:08.043Z"
-  },
-  {
-    "id": "1787939991265",
-    "topic": "현실 육아 꿀팁",
-    "caption": "현실 육아 꿀팁 핵심 내용을 한눈에 정리했어요.\n\n저장해두고 필요할 때 꺼내보세요!\n\n#정보 #꿀팁 #인사이트 #카드뉴스 #저장필수",
-    "imageUrl": "/generated/slide_1787939991065_1.png",
-    "imageUrls": [
-      "/generated/slide_1787939991065_1.png",
-      "/generated/slide_1787939991117_2.png",
-      "/generated/slide_1787939991166_3.png",
-      "/generated/slide_1787939991216_4.png",
-      "/generated/slide_1787939991264_5.png"
-    ],
-    "status": "DRAFT",
-    "createdAt": "2026-08-28T17:59:51.265Z"
-  },
-  {
-    "id": "1787939819088",
-    "topic": "봄 여행",
-    "caption": "봄 여행 핵심 내용을 한눈에 정리했어요.\n\n저장해두고 필요할 때 꺼내보세요!\n\n#정보 #꿀팁 #인사이트 #카드뉴스 #저장필수",
-    "imageUrl": "/generated/slide_1787939818818_1.png",
-    "imageUrls": [
-      "/generated/slide_1787939818818_1.png",
-      "/generated/slide_1787939818885_2.png",
-      "/generated/slide_1787939818941_3.png",
-      "/generated/slide_1787939818998_4.png",
-      "/generated/slide_1787939819087_5.png"
-    ],
-    "status": "DRAFT",
-    "createdAt": "2026-08-28T17:56:59.088Z"
   }
 ]
