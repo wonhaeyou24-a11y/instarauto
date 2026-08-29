@@ -48,6 +48,7 @@ function savePosts(posts) {
 let autoPilotState = {
     enabled: false,
     interval: '6hours',
+    autoSchedule: true,
     logs: []
 };
 let scheduledTask = null;
@@ -156,11 +157,86 @@ function getGeminiErrorMessage(error) {
 }
 
 // 공개 절대 URL 변환 유틸
-function toAbsoluteUrl(req, url) {
+function toAbsoluteUrl(url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const baseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${port}`;
     return `${baseUrl}${url}`;
 }
+
+// 황금 피드 예약 시간 계산 (오전 9시, 낮 12시, 오후 7시)
+function getNextOptimalScheduleTime() {
+    const now = new Date();
+    const optimalHours = [9, 12, 19];
+    
+    for (let h of optimalHours) {
+        let candidate = new Date(now);
+        candidate.setHours(h, 0, 0, 0);
+        if (candidate > now) {
+            return candidate.toISOString();
+        }
+    }
+    
+    let tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    return tomorrow.toISOString();
+}
+
+// [실제 Instagram 게시 공통 실행 함수]
+async function executePublishPost(post) {
+    if (!IG_USER_ID || !IG_ACCESS_TOKEN) {
+        throw new Error('.env에 IG_USER_ID 및 IG_ACCESS_TOKEN이 필요합니다.');
+    }
+
+    let publishResult;
+    if (Array.isArray(post.imageUrls) && post.imageUrls.length > 1) {
+        const absoluteUrls = post.imageUrls.map(url => toAbsoluteUrl(url));
+        publishResult = await publishInstagramCarousel(absoluteUrls, post.caption, IG_USER_ID, IG_ACCESS_TOKEN);
+    } else {
+        const targetImg = post.imageUrl || (post.imageUrls && post.imageUrls[0]);
+        const absoluteUrl = toAbsoluteUrl(targetImg);
+        publishResult = await publishInstagramSingle(absoluteUrl, post.caption, IG_USER_ID, IG_ACCESS_TOKEN);
+    }
+    return publishResult;
+}
+
+// ⏰ [예약 발행 감시 스케줄러 - 매 분 실행]
+cron.schedule('* * * * *', async () => {
+    const posts = loadPosts();
+    const now = new Date();
+    let updated = false;
+
+    for (let post of posts) {
+        if (post.status === 'SCHEDULED' && post.scheduledAt) {
+            const scheduledTime = new Date(post.scheduledAt);
+            if (scheduledTime <= now) {
+                addLog(`⏰ [예약 시간 도달] [${post.topic}] 게시물 자동 발행을 시작합니다...`);
+                try {
+                    const publishResult = await executePublishPost(post);
+                    post.status = 'PUBLISHED';
+                    post.instagramPostId = publishResult.postId;
+                    post.publishedAt = now.toISOString();
+                    updated = true;
+                    addLog(`🎉 [예약 자동발행 성공] Post ID: ${publishResult.postId}`);
+                    await sendKakaoNotification(
+                        '예약 콘텐츠 자동 발행 완료 🚀',
+                        `주제: ${post.topic}\n게시물 ID: ${publishResult.postId}\n링크: ${publishResult.postUrl}`,
+                        publishResult.postUrl
+                    );
+                } catch (err) {
+                    addLog(`❌ [예약 자동발행 실패] ${err.message}`);
+                    post.status = 'FAILED';
+                    post.lastError = err.message;
+                    updated = true;
+                }
+            }
+        }
+    }
+
+    if (updated) {
+        savePosts(posts);
+    }
+});
 
 // 🔄 Auto-Pilot 무인 파이프라인
 async function runAutoPilotPipeline(retryCount = 0) {
@@ -201,6 +277,9 @@ async function runAutoPilotPipeline(retryCount = 0) {
         const allTags = [...(parsed.hashtags?.core || []), ...(parsed.hashtags?.expand || []), ...(parsed.hashtags?.target || [])].join(' ');
         const finalCaption = `${parsed.bodyText}\n\n${allTags}`;
 
+        const scheduledTime = autoPilotState.autoSchedule ? getNextOptimalScheduleTime() : null;
+        const targetStatus = autoPilotState.autoSchedule ? 'SCHEDULED' : 'DRAFT';
+
         const posts = loadPosts();
         const newPost = {
             id: Date.now().toString(),
@@ -215,14 +294,22 @@ async function runAutoPilotPipeline(retryCount = 0) {
             imageUrls: [selectedImg],
             layout: 'modern',
             slides: [],
-            status: 'DRAFT',
+            status: targetStatus,
+            scheduledAt: scheduledTime,
+            publishedAt: null,
             createdAt: new Date().toISOString()
         };
         posts.unshift(newPost);
         savePosts(posts);
 
-        addLog(`📸 콘텐츠 생성 및 보관 완료!`);
-        await sendKakaoNotification('신규 콘텐츠 자동 생성 완료 ✅', `주제: ${parsed.topic}\n상태: DRAFT`);
+        if (targetStatus === 'SCHEDULED') {
+            const dateStr = new Date(scheduledTime).toLocaleString('ko-KR');
+            addLog(`⏰ [자동 예약] 콘텐츠가 황금 시간대(${dateStr})로 예약 등록되었습니다.`);
+            await sendKakaoNotification('신규 콘텐츠 자동 예약 완료 ⏰', `주제: ${parsed.topic}\n예약시간: ${dateStr}`);
+        } else {
+            addLog(`💾 [보관함 저장] 콘텐츠가 임시저장(DRAFT) 상태로 저장되었습니다.`);
+            await sendKakaoNotification('신규 콘텐츠 자동 생성 완료 ✅', `주제: ${parsed.topic}\n상태: DRAFT`);
+        }
 
     } catch (error) {
         addLog(`❌ 파이프라인 오류: ${error.message}`);
@@ -254,13 +341,14 @@ function setupCron(interval) {
 app.get('/api/autopilot', (req, res) => res.json(autoPilotState));
 
 app.post('/api/autopilot/toggle', (req, res) => {
-    const { enabled, interval } = req.body;
+    const { enabled, interval, autoSchedule } = req.body;
     autoPilotState.enabled = enabled;
     if (interval) autoPilotState.interval = interval;
+    if (autoSchedule !== undefined) autoPilotState.autoSchedule = autoSchedule;
     
     if (enabled) {
         setupCron(autoPilotState.interval);
-        addLog(`🟢 완전 자동화 가동 (주기: ${autoPilotState.interval})`);
+        addLog(`🟢 완전 자동화 가동 (주기: ${autoPilotState.interval} / 자동예약: ${autoPilotState.autoSchedule ? 'ON' : 'OFF'})`);
         runAutoPilotPipeline();
     } else {
         if (scheduledTask) scheduledTask.stop();
@@ -291,7 +379,7 @@ app.get('/api/search-images', async (req, res) => {
 app.get('/api/posts', (req, res) => res.json({ success: true, posts: loadPosts() }));
 
 app.post('/api/posts/save', (req, res) => {
-    const { id, category, topic, caption, bodyText, hashtags, imageUrl, candidateImages, imageUrls, layout, slides, status } = req.body;
+    const { id, category, topic, caption, bodyText, hashtags, imageUrl, candidateImages, imageUrls, layout, slides, status, scheduledAt } = req.body;
     let posts = loadPosts();
     const existingIndex = id ? posts.findIndex(p => p.id === id) : -1;
     
@@ -308,6 +396,7 @@ app.post('/api/posts/save', (req, res) => {
         layout: layout || 'modern',
         slides: slides || [],
         status: status || 'DRAFT',
+        scheduledAt: scheduledAt !== undefined ? scheduledAt : (existingIndex !== -1 ? posts[existingIndex].scheduledAt : null),
         updatedAt: new Date().toISOString()
     };
 
@@ -320,6 +409,20 @@ app.post('/api/posts/save', (req, res) => {
 
     savePosts(posts);
     res.json({ success: true, post: postPayload });
+});
+
+app.post('/api/posts/status', (req, res) => {
+    const { id, status } = req.body;
+    let posts = loadPosts();
+    posts = posts.map(p => {
+        if (p.id === id) {
+            p.status = status;
+            if (status === 'DRAFT') p.scheduledAt = null;
+        }
+        return p;
+    });
+    savePosts(posts);
+    res.json({ success: true, posts });
 });
 
 app.delete('/api/posts/:id', (req, res) => {
@@ -463,35 +566,14 @@ app.post('/api/rerender-all', async (req, res) => {
     }
 });
 
-// =================================================================
-// 🚀 STEP 4: 실제 인스타그램 Graph API 발행 엔드포인트
-// =================================================================
+// 즉시 발행 API
 app.post('/api/publish-now', async (req, res) => {
     const { postId, imageUrls, imageUrl, caption } = req.body;
-
-    if (!IG_USER_ID || !IG_ACCESS_TOKEN) {
-        return res.status(400).json({ 
-            success: false, 
-            message: '.env 파일에 IG_USER_ID 및 IG_ACCESS_TOKEN을 설정해야 실제 Instagram에 발행할 수 있습니다.' 
-        });
-    }
-
     try {
-        addLog(`🚀 [인스타그램 발행 시도] 게시물 처리를 시작합니다...`);
+        addLog(`🚀 [인스타그램 즉시 발행 시도] 게시물 처리를 시작합니다...`);
+        const postObj = { imageUrls, imageUrl, caption };
+        const publishResult = await executePublishPost(postObj);
 
-        let publishResult;
-        // 캐러셀 (2장 이상)
-        if (Array.isArray(imageUrls) && imageUrls.length > 1) {
-            const absoluteUrls = imageUrls.map(url => toAbsoluteUrl(req, url));
-            publishResult = await publishInstagramCarousel(absoluteUrls, caption, IG_USER_ID, IG_ACCESS_TOKEN);
-        } else {
-            // 단일 피드 이미지
-            const targetImg = imageUrl || (imageUrls && imageUrls[0]);
-            const absoluteUrl = toAbsoluteUrl(req, targetImg);
-            publishResult = await publishInstagramSingle(absoluteUrl, caption, IG_USER_ID, IG_ACCESS_TOKEN);
-        }
-
-        // 보관함 상태를 PUBLISHED로 갱신
         if (postId) {
             let posts = loadPosts();
             const idx = posts.findIndex(p => p.id === postId);
@@ -504,8 +586,6 @@ app.post('/api/publish-now', async (req, res) => {
         }
 
         addLog(`🎉 [인스타그램 발행 성공] Post ID: ${publishResult.postId}`);
-
-        // 카카오톡 알림 전송
         await sendKakaoNotification(
             '인스타그램 피드 발행 성공 🚀',
             `게시물 ID: ${publishResult.postId}\n인스타 링크: ${publishResult.postUrl}`,
@@ -513,7 +593,6 @@ app.post('/api/publish-now', async (req, res) => {
         );
 
         res.json({ success: true, ...publishResult });
-
     } catch (error) {
         addLog(`❌ [발행 실패] ${error.message}`);
         res.status(500).json({ success: false, message: error.message });
@@ -539,18 +618,23 @@ app.get('/', (req, res) => {
                 <header class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
                     <div>
                         <h1 class="text-2xl font-bold text-slate-800">📸 인스타그램 크리에이터 스튜디오</h1>
-                        <p class="text-xs text-slate-500 mt-1">STEP 4: Meta Graph API 실전 연동 탑재</p>
+                        <p class="text-xs text-slate-500 mt-1">완전자동화 Auto-Pilot & 스마트 예약 큐 시스템</p>
                     </div>
 
                     <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
                         <div class="flex flex-col">
                             <span class="text-xs font-bold text-slate-700">⚡ 완전 무인 자동화 (Auto-Pilot)</span>
-                            <select id="autoInterval" class="text-xs border border-slate-300 rounded mt-1 p-1 bg-white">
-                                <option value="1min">테스트 (1분 주기)</option>
-                                <option value="1hour">1시간마다 자동 발행</option>
-                                <option value="6hours" selected>6시간마다 자동 발행</option>
-                                <option value="24hours">매일 오전 9시 발행</option>
-                            </select>
+                            <div class="flex items-center gap-2 mt-1">
+                                <select id="autoInterval" class="text-xs border border-slate-300 rounded p-1 bg-white">
+                                    <option value="1min">테스트 (1분 주기)</option>
+                                    <option value="1hour">1시간마다 실행</option>
+                                    <option value="6hours" selected>6시간마다 실행</option>
+                                    <option value="24hours">매일 오전 9시</option>
+                                </select>
+                                <label class="text-[11px] text-slate-600 flex items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" id="autoScheduleCheck" checked class="rounded text-indigo-600"> 자동 예약큐 등록
+                                </label>
+                            </div>
                         </div>
                         <button id="autoToggleBtn" onclick="toggleAutoPilot()" class="px-5 py-2.5 rounded-lg font-bold text-sm bg-slate-300 text-slate-700 transition">
                             자동화 OFF
@@ -687,22 +771,37 @@ app.get('/', (req, res) => {
                             </div>
                         </div>
 
-                        <!-- 캡션 에디터 -->
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <div class="flex justify-between items-center mb-2">
+                        <!-- 캡션 에디터 & 예약 설정 바 -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                            <div class="flex justify-between items-center">
                                 <label class="text-sm font-semibold text-slate-700">📝 캡션 직접 편집</label>
                                 <div class="flex items-center gap-2">
                                     <span id="captionLengthBadge" class="text-[11px] text-slate-400">0자 / 태그 0개</span>
-                                    <button onclick="saveCurrentDraft()" class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition font-semibold">💾 현재 내용 임시저장</button>
+                                    <button onclick="saveCurrentDraft()" class="text-xs bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-300 transition font-semibold">💾 임시저장</button>
                                 </div>
                             </div>
                             <textarea id="captionEditor" oninput="syncCaption()" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none h-32" placeholder="생성된 글이 표시되며 직접 수정할 수 있습니다."></textarea>
+                            
+                            <!-- 예약 일시 지정 바 -->
+                            <div class="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-regular fa-calendar-check text-indigo-600"></i>
+                                    <span class="text-xs font-bold text-indigo-900">예약 일시 설정:</span>
+                                    <input type="datetime-local" id="scheduleInput" class="text-xs border border-indigo-200 rounded-lg p-1.5 bg-white text-slate-700">
+                                </div>
+                                <button onclick="scheduleCurrentPost()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow transition">
+                                    📅 이 시간에 예약 발행 등록
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- 보관함 -->
+                        <!-- 보관함 및 예약 큐 목록 -->
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-sm font-bold text-slate-800">📚 콘텐츠 보관함 (임시저장 & 이력)</h3>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-800">📋 콘텐츠 보관 및 예약 대기열</h3>
+                                    <span id="queueBadge" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0건</span>
+                                </div>
                                 <button onclick="loadPostList()" class="text-xs text-indigo-600 hover:underline">🔄 새로고침</button>
                             </div>
                             <div id="postStorageList" class="space-y-3 max-h-60 overflow-y-auto">
@@ -795,6 +894,13 @@ app.get('/', (req, res) => {
                     card: '둥근 카드 영역 중심 구성',
                     minimal: '여백 중심의 깔끔한 구성'
                 };
+
+                window.addEventListener('DOMContentLoaded', () => {
+                    const nextHour = new Date(Date.now() + 60 * 60 * 1000);
+                    nextHour.setMinutes(0);
+                    const localISO = new Date(nextHour.getTime() - (nextHour.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    document.getElementById('scheduleInput').value = localISO;
+                });
 
                 async function selectLayout(layout) {
                     selectedLayout = layout;
@@ -1142,12 +1248,57 @@ app.get('/', (req, res) => {
                             imageUrls: generatedImageUrls,
                             layout: selectedLayout,
                             slides: currentSlides,
-                            status: 'DRAFT' 
+                            status: 'DRAFT',
+                            scheduledAt: null
                         })
                     });
                     const data = await res.json();
                     if (data.success && data.post) currentPostId = data.post.id;
                     alert('성공적으로 임시저장되었습니다.');
+                    loadPostList();
+                }
+
+                // 스마트 예약 발행 등록 함수
+                async function scheduleCurrentPost() {
+                    const caption = document.getElementById('captionEditor').value;
+                    const scheduleVal = document.getElementById('scheduleInput').value;
+                    if (!caption) return alert('예약할 콘텐츠 내용이 없습니다.');
+                    if (!scheduleVal) return alert('예약 일시를 선택해주세요.');
+
+                    const scheduledAt = new Date(scheduleVal).toISOString();
+
+                    const res = await fetch('/api/posts/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            id: currentPostId,
+                            category: currentCategory,
+                            topic: selectedTopic || document.getElementById('customTopic').value || '예약 콘텐츠', 
+                            caption, 
+                            bodyText: currentBodyText,
+                            hashtags: currentHashtags,
+                            imageUrl: currentImageUrl || 'https://placehold.co/600x600', 
+                            candidateImages: currentCandidateImages,
+                            imageUrls: generatedImageUrls,
+                            layout: selectedLayout,
+                            slides: currentSlides,
+                            status: 'SCHEDULED',
+                            scheduledAt: scheduledAt
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.post) currentPostId = data.post.id;
+
+                    alert('⏰ [' + new Date(scheduleVal).toLocaleString('ko-KR') + '] 발행 예약이 등록되었습니다!');
+                    loadPostList();
+                }
+
+                async function cancelSchedule(id) {
+                    await fetch('/api/posts/status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, status: 'DRAFT' })
+                    });
                     loadPostList();
                 }
 
@@ -1158,21 +1309,40 @@ app.get('/', (req, res) => {
                         const data = await res.json();
                         if (data.success && data.posts.length > 0) {
                             storageList.innerHTML = '';
+                            
+                            const scheduledCount = data.posts.filter(p => p.status === 'SCHEDULED').length;
+                            document.getElementById('queueBadge').innerText = \`대기 \${scheduledCount}건\`;
+
                             data.posts.forEach(p => {
-                                const dateStr = new Date(p.updatedAt || p.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const isScheduled = p.status === 'SCHEDULED';
                                 const isPublished = p.status === 'PUBLISHED';
+                                const isFailed = p.status === 'FAILED';
+
+                                let statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">DRAFT</span>';
+                                if (isScheduled) statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">⏰ 예약대기</span>';
+                                if (isPublished) statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">✅ 발행완료</span>';
+                                if (isFailed) statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">❌ 실패</span>';
+
+                                const timeDisplay = isScheduled 
+                                    ? \`<span class="text-amber-700 font-semibold">\${new Date(p.scheduledAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 발행예정</span>\`
+                                    : (isPublished ? \`<span class="text-emerald-700">\${new Date(p.publishedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 발행됨</span>\` : new Date(p.updatedAt || p.createdAt).toLocaleDateString('ko-KR'));
+
                                 const item = document.createElement('div');
-                                item.className = "flex items-center justify-between p-3 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-white transition";
+                                item.className = "flex items-center justify-between p-3 border border-slate-200 rounded-xl text-xs " + (isScheduled ? "bg-amber-50/50 border-amber-200" : "bg-slate-50");
                                 item.innerHTML = \`
                                     <div class="flex items-center space-x-3 overflow-hidden">
                                         <img src="\${p.imageUrl}" class="w-10 h-10 object-cover rounded-lg shrink-0">
                                         <div class="truncate">
-                                            <span class="font-bold text-slate-800 block truncate">\${p.topic}</span>
-                                            <span class="text-slate-400 text-[10px]">[\${p.category || '일반'}] \${dateStr} · <span class="\${isPublished ? 'text-emerald-600 font-bold' : 'text-indigo-600 font-semibold'}">\${p.status}</span></span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="font-bold text-slate-800 truncate">\${p.topic}</span>
+                                                \${statusBadge}
+                                            </div>
+                                            <div class="text-[11px] text-slate-400 mt-0.5">[\${p.category || '일반'}] \${timeDisplay}</div>
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-2 shrink-0">
-                                        <button onclick="loadPostData('\${p.id}')" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">불러오기</button>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button onclick="loadPostData('\${p.id}')" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">편집</button>
+                                        \${isScheduled ? \`<button onclick="cancelSchedule('\${p.id}')" class="px-2 py-1 bg-amber-200 text-amber-900 rounded-lg hover:bg-amber-300">예약취소</button>\` : ''}
                                         <button onclick="deletePost('\${p.id}')" class="px-2 py-1 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-100 hover:text-red-600">삭제</button>
                                     </div>
                                 \`;
@@ -1180,6 +1350,7 @@ app.get('/', (req, res) => {
                             });
                         } else {
                             storageList.innerHTML = '<div class="text-xs text-slate-400">저장된 콘텐츠가 없습니다.</div>';
+                            document.getElementById('queueBadge').innerText = '0건';
                         }
                     } catch (e) {
                         storageList.innerHTML = '<div class="text-xs text-red-400">보관함 로드 실패</div>';
@@ -1209,6 +1380,12 @@ app.get('/', (req, res) => {
 
                         syncCaption();
                         if (post.hashtags) renderHashtags(post.hashtags);
+
+                        if (post.scheduledAt) {
+                            const date = new Date(post.scheduledAt);
+                            const localISO = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                            document.getElementById('scheduleInput').value = localISO;
+                        }
 
                         if (generatedImageUrls.length > 0) {
                             updateSlideViewer(0);
@@ -1257,7 +1434,6 @@ app.get('/', (req, res) => {
                     saveAs(zipBlob, \`cardnews_\${Date.now()}.zip\`);
                 }
 
-                // 🚀 STEP 4: 실제 인스타그램에 바로 게시 함수
                 async function publishDirectToInstagram() {
                     const caption = document.getElementById('captionEditor').value;
                     if (!caption) return alert('게시할 캡션 내용이 없습니다.');
@@ -1296,11 +1472,12 @@ app.get('/', (req, res) => {
 
                 async function toggleAutoPilot() {
                     const interval = document.getElementById('autoInterval').value;
+                    const autoSchedule = document.getElementById('autoScheduleCheck').checked;
                     isAutoEnabled = !isAutoEnabled;
                     const res = await fetch('/api/autopilot/toggle', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ enabled: isAutoEnabled, interval })
+                        body: JSON.stringify({ enabled: isAutoEnabled, interval, autoSchedule })
                     });
                     const data = await res.json();
                     updateAutoUI(data.state);
@@ -1334,5 +1511,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`✅ [STEP 4 Meta Graph API 실전 연동 완료] 서버 가동 (포트: ${port})`);
+    console.log(`✅ [완전자동화 & 스마트 예약 큐 & 실전 Meta Graph API 통합 완료] 서버 가동 (포트: ${port})`);
 });
