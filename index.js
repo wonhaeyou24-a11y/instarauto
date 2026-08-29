@@ -12,6 +12,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const { generateCarouselImages } = require('./generateCards');
@@ -84,7 +85,7 @@ async function runAutoPilotPipeline() {
     addLog(`🤖 [자동화] 카테고리 [${randomCategory}] 기반 콘텐츠 자동 생성을 시작합니다...`);
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
         const prompt = `
         너는 10만 팔로워를 가진 트렌디한 인스타그램 마케터야.
         선택된 카테고리: [${randomCategory}]
@@ -174,7 +175,7 @@ app.post('/api/autopilot/toggle', (req, res) => {
 app.get('/api/trends', async (req, res) => {
     const category = req.query.category || '가족여행';
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
         const prompt = `인스타그램에서 인기 있는 [${category}] 관련 트렌디하고 후킹력 강한 주제 5개를 추천해줘. 순수 JSON 배열 형식으로만 응답: ["주제1", "주제2", "주제3", "주제4", "주제5"]`;
         const result = await model.generateContent(prompt);
         const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
@@ -235,7 +236,7 @@ app.delete('/api/posts/:id', (req, res) => {
 app.post('/api/generate', async (req, res) => {
     const { topic, instruction, currentCaption, tone } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
         let tonePrompt = tone ? `[스타일/톤]: ${tone} 분위기로 변환해줘.` : '';
         let prompt = currentCaption
             ? `[기존]: ${currentCaption}\n[지시]: ${instruction}\n${tonePrompt}\n수정 후 JSON 응답: {"keyword":"검색용 영어단어", "caption":"수정본"}`
@@ -267,7 +268,7 @@ app.post('/api/generate-carousel', async (req, res) => {
     }
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       generationConfig: { responseMimeType: "application/json" }
     });
 
