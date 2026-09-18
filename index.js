@@ -292,21 +292,46 @@ async function generateWithAi(config, prompt, jsonMode = false) {
     const { provider, apiKey, model } = validateAiConfig(config);
     if (provider === 'gemini') {
         const client = new GoogleGenerativeAI(apiKey);
-        try {
-            const result = await client.getGenerativeModel({ model, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
-            return result.response.text();
-        } catch (modelErr) {
-            // 모델명이 맞지 않거나 지원 종료된 경우 gemini-3.6-flash로 자동 자가 복구 (Self-Healing)
-            const fallbackModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-            console.warn(`⚠️ 지정된 모델(${model}) 실패, ${fallbackModel}로 자가 복구 시도:`, modelErr.message);
-            const fallbackResult = await client.getGenerativeModel({ model: fallbackModel, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
-            return fallbackResult.response.text();
+        const candidateModels = [model, 'gemini-3.6-flash', 'gemini-flash-latest'].filter((v, i, a) => a.indexOf(v) === i);
+        let lastError = null;
+
+        for (const m of candidateModels) {
+            try {
+                const callPromise = client.getGenerativeModel({
+                    model: m,
+                    generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined
+                }).generateContent(prompt);
+
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error(`[${m}] 응답 시간 초과 (8초)`)), 8000)
+                );
+
+                const result = await Promise.race([callPromise, timeoutPromise]);
+                return result.response.text();
+            } catch (err) {
+                lastError = err;
+                console.warn(`⚠️ 모델(${m}) 호출 실패: ${err.message} -> 다음 후보로 전환`);
+            }
         }
+        throw new Error('모든 Gemini 모델 호출 실패: ' + (lastError?.message || '알 수 없는 오류'));
     }
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.8, response_format: jsonMode ? { type: 'json_object' } : undefined })
+
+    // OpenAI 처리
+    const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('OpenAI 응답 시간 초과 (10초)')), 10000)
+    );
+    const fetchPromise = fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.8,
+            response_format: jsonMode ? { type: 'json_object' } : undefined
+        })
     });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error?.message || 'OpenAI API 호출에 실패했습니다.');
     return data.choices?.[0]?.message?.content || '';
@@ -347,19 +372,27 @@ app.post('/api/models', async (req, res) => {
             });
         }
 
-        if (provider === 'openai') {
-            const response = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } });
+        // 외부 API가 응답을 지연/행(hang)시켜도 UI가 무한 로딩에 걸리지 않도록 8초 타임아웃 적용
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        try {
+            if (provider === 'openai') {
+                const response = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data?.error?.message || '모델 목록을 불러오지 못했습니다.');
+                const models = data.data.map(m => m.id).filter(id => /^(gpt-|o[0-9]|chatgpt-)/.test(id)).sort().reverse();
+                return res.json({ success: true, models: models.length ? models : defaultOpenAiModels });
+            }
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, { signal: controller.signal });
             const data = await response.json();
             if (!response.ok) throw new Error(data?.error?.message || '모델 목록을 불러오지 못했습니다.');
-            const models = data.data.map(m => m.id).filter(id => /^(gpt-|o[0-9]|chatgpt-)/.test(id)).sort().reverse();
-            return res.json({ success: true, models: models.length ? models : defaultOpenAiModels });
+            const models = (data.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, '')).sort().reverse();
+            return res.json({ success: true, models: models.length ? models : defaultGeminiModels });
+        } finally {
+            clearTimeout(timeoutId);
         }
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error?.message || '모델 목록을 불러오지 못했습니다.');
-        const models = (data.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, '')).sort().reverse();
-        return res.json({ success: true, models: models.length ? models : defaultGeminiModels });
     } catch (error) {
         console.warn('⚠️ 모델 조회 예외, 기본 모델 제공:', error.message);
         const provider = req.body?.provider === 'openai' ? 'openai' : 'gemini';
@@ -791,14 +824,16 @@ app.get('/', (req, res) => {
                     };
                 }
 
+                function staticModelOptionsHtml(provider) {
+                    if (provider === 'gemini') {
+                        return '<option value="gemini-flash-latest">gemini-flash-latest (추천, 항상 최신)</option><option value="gemini-pro-latest">gemini-pro-latest (항상 최신)</option><option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option><option value="gemini-2.5-pro">gemini-2.5-pro</option><option value="gemini-2.5-flash">gemini-2.5-flash</option><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option><option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option><option value="gemini-1.5-flash">gemini-1.5-flash</option>';
+                    }
+                    return '<option value="gpt-4.1-mini">gpt-4.1-mini (추천)</option><option value="gpt-5">gpt-5</option><option value="gpt-5-mini">gpt-5-mini</option><option value="gpt-4.1">gpt-4.1</option><option value="gpt-4o">gpt-4o</option><option value="gpt-4o-mini">gpt-4o-mini</option><option value="o3">o3</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+                }
+
                 function onProviderChange() {
                     const provider = document.getElementById('aiProvider').value;
-                    const select = document.getElementById('aiModel');
-                    if (provider === 'gemini') {
-                        select.innerHTML = '<option value="gemini-flash-latest">gemini-flash-latest (추천, 항상 최신)</option><option value="gemini-pro-latest">gemini-pro-latest (항상 최신)</option><option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option><option value="gemini-2.5-pro">gemini-2.5-pro</option><option value="gemini-2.5-flash">gemini-2.5-flash</option><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option><option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option><option value="gemini-1.5-flash">gemini-1.5-flash</option>';
-                    } else {
-                        select.innerHTML = '<option value="gpt-4.1-mini">gpt-4.1-mini (추천)</option><option value="gpt-5">gpt-5</option><option value="gpt-5-mini">gpt-5-mini</option><option value="gpt-4.1">gpt-4.1</option><option value="gpt-4o">gpt-4o</option><option value="gpt-4o-mini">gpt-4o-mini</option><option value="o3">o3</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
-                    }
+                    document.getElementById('aiModel').innerHTML = staticModelOptionsHtml(provider);
                     loadModels(false);
                 }
 
@@ -826,25 +861,39 @@ app.get('/', (req, res) => {
                     const config = getAiConfig();
                     const select = document.getElementById('aiModel');
                     if (!silent) select.innerHTML = '<option>모델 목록 확인 중...</option>';
-                    
+
+                    // 서버가 응답을 못 주는 상황에서도 "확인 중..."에 무한정 멈춰있지 않도록 클라이언트 타임아웃 적용
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
                     try {
                         const res = await fetch('/api/models', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(config)
+                            body: JSON.stringify(config),
+                            signal: controller.signal
                         });
                         const data = await res.json();
                         if (data.success && Array.isArray(data.models) && data.models.length > 0) {
                             select.innerHTML = data.models.map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">' + m + '</option>').join('');
                             // 추천 기본 모델이 있으면 우선 선택
-                            const preferred = config.provider === 'openai' ? 'gpt-4o-mini' : (data.models.includes('gemini-3.6-flash') ? 'gemini-3.6-flash' : 'gemini-flash-latest');
+                            const preferred = config.provider === 'openai' ? 'gpt-4.1-mini' : 'gemini-flash-latest';
                             if (data.models.includes(preferred)) {
                                 select.value = preferred;
                             }
+                            if (data.warning && !silent) {
+                                console.warn('모델 목록 조회 경고:', data.warning);
+                            }
+                        } else {
+                            throw new Error('모델 목록이 비어 있습니다.');
                         }
                     } catch (err) {
                         console.warn('모델 목록 불러오기 예외:', err.message);
-                        if (!silent) alert('모델 조회 안내: ' + err.message);
+                        // 실패해도 드롭다운이 "확인 중..."에 멈춰있지 않도록 기본 목록으로 복구 (loadModels 재호출 없이 정적 목록만 채움)
+                        select.innerHTML = staticModelOptionsHtml(config.provider);
+                        if (!silent) alert('모델 목록을 실시간으로 불러오지 못해 기본 목록을 표시합니다: ' + err.message);
+                    } finally {
+                        clearTimeout(timeoutId);
                     }
                 }
 
@@ -936,7 +985,7 @@ app.get('/', (req, res) => {
                     tags.forEach(tag => {
                         const chip = document.createElement('button');
                         const isSelected = selectedTags.has(tag);
-                        chip.className = \`px-2.5 py-1 text-xs rounded-lg border transition font-medium \${isSelected ? activeClass + ' font-bold' : 'bg-slate-50 text-slate-400 border-slate-200 line-through'}\`;
+                        chip.className = 'px-2.5 py-1 text-xs rounded-lg border transition font-medium ' + (isSelected ? activeClass + ' font-bold' : 'bg-slate-50 text-slate-400 border-slate-200 line-through');
                         chip.innerText = tag;
                         chip.onclick = () => {
                             if (selectedTags.has(tag)) selectedTags.delete(tag);
@@ -950,7 +999,7 @@ app.get('/', (req, res) => {
 
                 function updateCaptionFromTags() {
                     const tagsStr = Array.from(selectedTags).join(' ');
-                    const finalCap = currentBodyText ? \`\${currentBodyText}\n\n\${tagsStr}\` : tagsStr;
+                    const finalCap = currentBodyText ? (currentBodyText + '\\n\\n' + tagsStr) : tagsStr;
                     document.getElementById('captionEditor').value = finalCap;
                     syncCaption();
                 }
@@ -969,7 +1018,7 @@ app.get('/', (req, res) => {
                         
                         const badge = document.createElement('span');
                         badge.className = "absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-bold";
-                        badge.innerText = idx === 0 ? '표지' : (idx === generatedImageUrls.length - 1 ? '아웃트로' : \`\${idx}\`);
+                        badge.innerText = idx === 0 ? '표지' : (idx === generatedImageUrls.length - 1 ? '아웃트로' : String(idx));
 
                         wrapper.onclick = () => updateSlideViewer(idx);
                         wrapper.appendChild(img);
@@ -986,7 +1035,7 @@ app.get('/', (req, res) => {
                     document.getElementById('mockImage').src = currentImageUrl;
 
                     const ind = document.getElementById('slideIndicator');
-                    ind.innerText = \`\${idx + 1} / \${generatedImageUrls.length}\`;
+                    ind.innerText = (idx + 1) + ' / ' + generatedImageUrls.length;
                     ind.style.display = 'inline-block';
 
                     document.getElementById('prevSlideBtn').style.display = 'flex';
@@ -1211,7 +1260,7 @@ app.get('/', (req, res) => {
                         const zipBlob = await zip.generateAsync({ type: 'blob' });
                         const safeTopic = topic.replace(/[/\\?%*:|"<>]/g, '_').slice(0, 20);
                         saveAs(zipBlob, 'instagram_' + currentCategory + '_' + safeTopic + '_' + Date.now() + '.zip');
-                        alert('✅ [ZIP 다운로드 완료]\n초안 데이터(draft.json)와 카드 이미지들이 내 컴퓨터에 안전하게 저장되었습니다!');
+                        alert('✅ [ZIP 다운로드 완료]\\n초안 데이터(draft.json)와 카드 이미지들이 내 컴퓨터에 안전하게 저장되었습니다!');
                     } catch (err) {
                         alert('ZIP 생성 중 오류 발생: ' + err.message);
                     }
@@ -1294,8 +1343,8 @@ app.get('/', (req, res) => {
                                     '</div>' +
                                 '</div>' +
                                 '<div class="flex items-center gap-1.5 shrink-0">' +
-                                    '<button onclick="loadPostData(\'' + p.id + '\')" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">불러오기</button>' +
-                                    '<button onclick="deletePost(\'' + p.id + '\')" class="px-2 py-1 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-100 hover:text-red-600">삭제</button>' +
+                                    '<button onclick="loadPostData(&quot;' + p.id + '&quot;)" class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">불러오기</button>' +
+                                    '<button onclick="deletePost(&quot;' + p.id + '&quot;)" class="px-2 py-1 bg-slate-200 text-slate-600 rounded-lg hover:bg-red-100 hover:text-red-600">삭제</button>' +
                                 '</div>';
                             storageList.appendChild(item);
                         });
@@ -1349,7 +1398,7 @@ app.get('/', (req, res) => {
                     if (!currentImageUrl) return;
                     const a = document.createElement('a');
                     a.href = currentImageUrl;
-                    a.download = \`cardnews_\${Date.now()}.png\`;
+                    a.download = 'cardnews_' + Date.now() + '.png';
                     a.click();
                 }
 
@@ -1361,12 +1410,12 @@ app.get('/', (req, res) => {
                     for (let i = 0; i < generatedImageUrls.length; i++) {
                         const url = generatedImageUrls[i];
                         const blob = await fetch(url).then(r => r.blob());
-                        const slideName = i === 0 ? '01_cover.png' : (i === generatedImageUrls.length - 1 ? \`0\${i+1}_outro.png\` : \`0\${i+1}_slide.png\`);
+                        const slideName = i === 0 ? '01_cover.png' : (i === generatedImageUrls.length - 1 ? ('0' + (i + 1) + '_outro.png') : ('0' + (i + 1) + '_slide.png'));
                         folder.file(slideName, blob);
                     }
 
                     const zipBlob = await zip.generateAsync({ type: "blob" });
-                    saveAs(zipBlob, \`cardnews_\${Date.now()}.zip\`);
+                    saveAs(zipBlob, 'cardnews_' + Date.now() + '.zip');
                 }
 
                 async function copyCaption() {
