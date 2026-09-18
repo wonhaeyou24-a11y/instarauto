@@ -303,7 +303,7 @@ async function generateWithAi(config, prompt, jsonMode = false) {
                 }).generateContent(prompt);
 
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error(`[${m}] 응답 시간 초과 (8초)`)), 8000)
+                    setTimeout(() => reject(new Error(`[${m}] 응답 시간 초과 (15초)`)), 15000)
                 );
 
                 const result = await Promise.race([callPromise, timeoutPromise]);
@@ -404,21 +404,39 @@ app.post('/api/models', async (req, res) => {
     }
 });
 
-// 트렌드 추천 API (AI 생성 실패 또는 3초 지연 시 즉시 보장형 프리셋 반환)
+// 트렌드 추천 API — AI가 현재 날짜 및 시의성 맥락 기반으로 신선한 주제 5개 생성
 app.post('/api/trends', async (req, res) => {
     const { category = '가족여행', aiConfig } = req.body;
     const fallbackList = FALLBACK_TRENDS[category] || FALLBACK_TRENDS['가족여행'];
 
+    // 현재 날짜 맥락을 프롬프트에 주입하여 시의성 있는 주제 생성
+    const now = new Date();
+    const dateCtx = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
+    const seasonMap = { 12: '겨울', 1: '겨울', 2: '겨울', 3: '봄', 4: '봄', 5: '봄', 6: '여름', 7: '여름', 8: '여름', 9: '가을', 10: '가을', 11: '가을' };
+    const season = seasonMap[now.getMonth() + 1];
+
     try {
-        const prompt = `한국 인스타그램 콘텐츠 전략가로서 [${category}]에서 지금 관심을 끌 만한, 과장이나 허위 없이 전문적이고 재미있는 카드뉴스 주제 5개를 제안하세요. JSON 배열만 응답하세요: ["주제1", "주제2", "주제3", "주제4", "주제5"]`;
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI 응답 지연')), 3500));
+        const prompt = `당신은 한국 인스타그램 트렌드 전문 크리에이터입니다.
+오늘 날짜: ${dateCtx} (${season} 시즌)
+카테고리: [${category}]
+
+지금 이 시기에 한국 인스타그램에서 저장률·공유율이 높을 만한, 새롭고 구체적인 카드뉴스 주제 5개를 제안하세요.
+- 식상하거나 뻔한 주제 금지 (예: "꿀팁 모음", "정보 공유" 등 추상적 표현 사용 금지)
+- 각 주제는 독자가 제목만 보고도 저장하고 싶은 충동이 드는 후킹 문장으로 작성
+- 시즌/계절/최신 이슈를 자연스럽게 반영하되 허위·과장 금지
+- 문장 형태로 50자 이내로 작성
+JSON 배열만 응답 (다른 텍스트 없이): ["주제1", "주제2", "주제3", "주제4", "주제5"]`;
+
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI 응답 지연')), 12000));
         const text = await Promise.race([generateWithAi(aiConfig, prompt, true), timeoutPromise]);
         const parsed = cleanJson(text);
         if (Array.isArray(parsed) && parsed.length > 0) {
-            return res.json({ success: true, trends: parsed });
+            console.log(`✅ [${category}] AI 트렌드 주제 ${parsed.length}개 생성 성공`);
+            return res.json({ success: true, trends: parsed, isAI: true });
         }
+        throw new Error('AI 응답 파싱 실패 — 배열이 아님');
     } catch (e) {
-        console.warn(`ℹ️ 빠른 UX를 위해 보장형 프리셋 트렌드를 즉시 제공합니다 (${e.message})`);
+        console.warn(`ℹ️ AI 트렌드 실패(${e.message}), 보장형 프리셋 제공`);
     }
 
     res.json({ success: true, trends: fallbackList, isPreset: true });
@@ -477,12 +495,32 @@ app.post('/api/generate', async (req, res) => {
     const cat = category || '가족여행';
     let parsed;
 
+    // 현재 날짜 및 시즌 맥락 주입
+    const __now = new Date();
+    const __dateCtx = `${__now.getFullYear()}년 ${__now.getMonth() + 1}월`;
+    const __seasonMap = { 12: '겨울', 1: '겨울', 2: '겨울', 3: '봄', 4: '봄', 5: '봄', 6: '여름', 7: '여름', 8: '여름', 9: '가을', 10: '가을', 11: '가을' };
+    const __season = __seasonMap[__now.getMonth() + 1];
+    const __topicStr = topic || cat;
+
     try {
         const tonePrompt = tone ? `[스타일]: ${tone}` : '전문적이면서도 친근하고 저장하고 싶은 톤';
-        const prompt = `당신은 한국 인스타그램 콘텐츠 에디터입니다. [주제]: ${topic || cat}\n${tonePrompt}\n검증되지 않은 수치·의학·금융 조언은 단정하지 마세요. 첫 문장은 강하게 후킹하고, 본문은 읽기 좋게 줄바꿈하세요. JSON만 응답: {"keyword":"이미지 검색용 영어 키워드", "bodyText":"캡션 본문", "hashtags":{"core":["#태그"], "expand":["#태그"], "target":["#태그"]}}`;
+        const prompt = `당신은 ${__dateCtx} ${__season} 시즌 기준 한국 인스타그램 콘텐츠 전문가입니다.
+
+[선택된 주제]: "${__topicStr}"
+[카테고리]: ${cat}
+${tonePrompt}
+
+위 주제에 완전히 집중하여, 인스타그램 단일 이미지 게시글을 작성하세요:
+- 검증되지 않은 수치·의학·금융 조언은 단정하지 마세요
+- 첫 문장은 독자가 멈출 수밖에 없는 강한 후킹으로 시작
+- 본문은 읽기 좋게 줄바꿈하고, 주제와 직접 관련된 구체적인 정보 제공
+- keyword: 이 주제와 직접 연관된 구체적인 영어 이미지 검색어
+
+JSON만 응답 (다른 텍스트 없이): {"keyword":"specific image search keyword in English", "bodyText":"캡션 본문", "hashtags":{"core":["#태그","#태그","#태그","#태그","#태그"], "expand":["#태그","#태그","#태그","#태그","#태그"], "target":["#태그","#태그","#태그","#태그","#태그"]}}`;
         parsed = cleanJson(await generateWithAi(aiConfig, prompt, true));
+        console.log(`✅ 단일 피드 AI 생성 성공: "${__topicStr}"`);
     } catch (apiError) {
-        console.warn(`ℹ️ 단일 피드 AI 생성 실패, 보장형 프리셋 적용:`, apiError.message);
+        console.warn(`ℹ️ 단일 피드 AI 생성 실패(${apiError.message}), 프리셋 적용 (주제: "${__topicStr}")`);
         const preset = FALLBACK_PRESETS[cat] || FALLBACK_PRESETS['가족여행'];
         parsed = {
             keyword: preset.keyword,
@@ -512,14 +550,38 @@ app.post('/api/generate-carousel', async (req, res) => {
     const cat = category || '가족여행';
     let aiData;
 
+    // 현재 날짜 및 시즌 맥락 주입
+    const _now = new Date();
+    const _dateCtx = `${_now.getFullYear()}년 ${_now.getMonth() + 1}월`;
+    const _seasonMap = { 12: '겨울', 1: '겨울', 2: '겨울', 3: '봄', 4: '봄', 5: '봄', 6: '여름', 7: '여름', 8: '여름', 9: '가을', 10: '가을', 11: '가을' };
+    const _season = _seasonMap[_now.getMonth() + 1];
+    const _topicStr = topic || cat;
+
     try {
-        const prompt = `당신은 한국 인스타그램 카드뉴스 전문 에디터입니다. 주제: "${topic || cat}". 독자가 멈춰 읽고 저장할 만큼 흥미롭되, 정보는 과장하거나 허위로 만들지 마세요. 표지는 2줄 이하의 강한 후킹, 2~4장은 각기 다른 실전 인사이트, 마지막은 자연스러운 저장 CTA로 작성합니다. 문장은 카드에 들어가게 짧고 또렷하게 쓰세요. 정확히 5장 JSON만 응답: {"bodyText":"캡션 본문", "hashtags":{"core":["#태그1"], "expand":["#태그2"], "target":["#태그3"]}, "slides":[{"type":"cover","imageKeyword":"영어 이미지 키워드","title":"제목","subtitle":"부제"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"01","title":"소제목","content":"내용"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"02","title":"소제목","content":"내용"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"03","title":"소제목","content":"내용"},{"type":"outro","imageKeyword":"영어 이미지 키워드","title":"저장 CTA","subtitle":"짧은 안내"}]}`;
+        const prompt = `당신은 ${_dateCtx} ${_season} 시즌 기준으로 한국 인스타그램에서 반응이 폭발적인 카드뉴스를 만드는 콘텐츠 전문가입니다.
+
+[선택된 트렌드 주제]: "${_topicStr}"
+[카테고리]: ${cat}
+
+위 주제에 완전히 집중하여, 이 주제만을 다루는 카드뉴스를 만드세요. 아래 규칙을 반드시 지키세요:
+- 표지(cover): 주제의 핵심을 담은 2줄 이하 강렬한 후킹 제목 (독자가 멈출 수밖에 없는 문장)
+- 본문 3장(body): 각기 다른 구체적 인사이트/팁/정보 (막연한 내용 금지, 숫자/사례 포함 권장)
+- 아웃트로(outro): 저장·팔로우를 유도하는 자연스러운 CTA
+- imageKeyword: 각 슬라이드 내용과 직접 연관된 구체적인 영어 키워드 (예: "autumn family hiking trail" "savings account piggy bank" 등)
+- bodyText: 인스타그램 캡션 본문 (주제에 맞는 후킹 첫 문장 + 본문)
+- hashtags: 주제와 카테고리에 꼭 맞는 구체적인 한국어 해시태그
+
+정확히 5장 JSON만 응답 (다른 텍스트 없이):
+{"bodyText":"캡션 본문", "hashtags":{"core":["#태그1","#태그2","#태그3","#태그4","#태그5"], "expand":["#태그1","#태그2","#태그3","#태그4","#태그5"], "target":["#태그1","#태그2","#태그3","#태그4","#태그5"]}, "slides":[{"type":"cover","imageKeyword":"specific english keyword","title":"제목(2줄이하)","subtitle":"부제"},{"type":"body","imageKeyword":"specific english keyword","step":"01","title":"소제목","content":"구체적 내용 (2~3문장)"},{"type":"body","imageKeyword":"specific english keyword","step":"02","title":"소제목","content":"구체적 내용 (2~3문장)"},{"type":"body","imageKeyword":"specific english keyword","step":"03","title":"소제목","content":"구체적 내용 (2~3문장)"},{"type":"outro","imageKeyword":"specific english keyword","title":"저장 CTA","subtitle":"짧은 안내"}]}`;
         aiData = cleanJson(await generateWithAi(aiConfig, prompt, true));
+        console.log(`✅ 카드뉴스 AI 생성 성공: "${_topicStr}"`);
     } catch (apiError) {
-        console.warn(`ℹ️ 카드뉴스 AI 생성 실패, 보장형 프리셋 적용:`, apiError.message);
+        console.warn(`ℹ️ 카드뉴스 AI 생성 실패(${apiError.message}), 보장형 프리셋 적용 (주제: "${_topicStr}")`);
         aiData = JSON.parse(JSON.stringify(FALLBACK_PRESETS[cat] || FALLBACK_PRESETS['가족여행']));
+        // 주제가 있을 경우 표지 제목을 선택한 트렌드 주제로 덮어씌움
         if (topic) {
-            aiData.slides[0].title = topic;
+            aiData.slides[0].title = topic.length > 20 ? topic.substring(0, 20) + '...' : topic;
+            aiData.slides[0].subtitle = '지금 바로 확인하세요';
         }
     }
 
@@ -926,17 +988,36 @@ app.get('/', (req, res) => {
 
                 async function fetchTrends() {
                     const list = document.getElementById('trendList');
-                    list.innerHTML = '<div class="text-sm text-slate-400">[' + currentCategory + '] 추천 트렌드 불러오는 중...</div>';
+                    // 로딩 스피너 UI (AI가 실시간 생성 중임을 표시)
+                    list.innerHTML = '<div class="flex items-center gap-2 text-xs text-indigo-500 p-2">' +
+                        '<svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>' +
+                        '<span>🤖 AI가 <b>' + currentCategory + '</b> 최신 트렌드 주제를 실시간으로 생성 중... (최대 12초)</span></div>';
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                     try {
                         const res = await fetch('/api/trends', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ category: currentCategory, aiConfig: getAiConfig() })
+                            body: JSON.stringify({ category: currentCategory, aiConfig: getAiConfig() }),
+                            signal: controller.signal
                         });
                         const data = await res.json();
                         const trends = (data.success && Array.isArray(data.trends) && data.trends.length > 0) ? data.trends : ['추천 주제를 불러오지 못했습니다.'];
-                        
+
                         list.innerHTML = '';
+
+                        // AI 생성인지 프리셋인지 표시 배지
+                        const badge = document.createElement('div');
+                        badge.className = data.isAI
+                            ? 'text-[10px] text-emerald-600 font-bold mb-2 flex items-center gap-1'
+                            : 'text-[10px] text-slate-400 mb-2 flex items-center gap-1';
+                        badge.innerHTML = data.isAI
+                            ? '✨ AI가 오늘 날짜 기준으로 실시간 생성한 트렌드 주제입니다'
+                            : '📋 저장된 추천 주제 (AI 응답 지연 시 대체 제공)';
+                        list.appendChild(badge);
+
                         trends.forEach((t, i) => {
                             const item = document.createElement('div');
                             item.className = "p-2.5 border border-slate-200 rounded-xl text-xs text-slate-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-900 transition flex items-center justify-between";
@@ -945,6 +1026,7 @@ app.get('/', (req, res) => {
                                 document.querySelectorAll('#trendList div').forEach(el => {
                                     el.className = "p-2.5 border border-slate-200 rounded-xl text-xs text-slate-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-900 transition flex items-center justify-between";
                                 });
+                                badge.className = data.isAI ? 'text-[10px] text-emerald-600 font-bold mb-2 flex items-center gap-1' : 'text-[10px] text-slate-400 mb-2 flex items-center gap-1';
                                 item.className = "p-2.5 border-2 border-indigo-500 bg-indigo-50 rounded-xl text-xs text-indigo-900 font-bold cursor-pointer transition flex items-center justify-between shadow-sm";
                                 selectedTopic = t;
                                 document.getElementById('customTopic').value = t;
@@ -953,7 +1035,9 @@ app.get('/', (req, res) => {
                         });
                     } catch (e) {
                         console.warn('트렌드 로딩 오류:', e);
-                        list.innerHTML = '<div class="text-xs text-slate-400">트렌드 목록 로드 실패</div>';
+                        list.innerHTML = '<div class="text-xs text-slate-400">트렌드 목록 로드 실패 (인터넷 연결 또는 AI 키 확인)</div>';
+                    } finally {
+                        clearTimeout(timeoutId);
                     }
                 }
 
