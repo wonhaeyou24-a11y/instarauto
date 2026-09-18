@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 const express = require("express");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
@@ -86,7 +86,7 @@ function validateAiConfig(config = {}) {
     let apiKey = String(config.apiKey || "").trim();
     let model = String(config.model || "").trim();
     if (!apiKey) apiKey = provider === "gemini" ? (process.env.GEMINI_API_KEY || "") : (process.env.OPENAI_API_KEY || "");
-    if (!model) model = provider === "gemini" ? (process.env.GEMINI_MODEL || "gemini-flash-latest") : "gpt-4o-mini";
+    if (!model) model = provider === "gemini" ? (process.env.GEMINI_MODEL || "gemini-3.6-flash") : "gpt-4o-mini";
     if (!apiKey) throw new Error("API 키가 없습니다. 화면 상단에서 API 키를 입력해주세요.");
     return { provider, apiKey, model };
 }
@@ -95,7 +95,7 @@ async function generateWithAi(config, prompt, jsonMode = false) {
     const { provider, apiKey, model } = validateAiConfig(config);
     if (provider === "gemini") {
         const client = new GoogleGenerativeAI(apiKey);
-        const candidates = [model, "gemini-flash-latest", "gemini-2.5-flash"].filter((v, i, a) => a.indexOf(v) === i);
+        const candidates = [model, "gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"].filter((v, i, a) => a.indexOf(v) === i);
         let lastError = null;
         for (const m of candidates) {
             try {
@@ -135,11 +135,11 @@ function getDateCtx() {
 // ===== API =====
 
 app.get("/api/config-status", (req, res) => {
-    res.json({ success: true, hasGeminiKey: !!(process.env.GEMINI_API_KEY?.trim()), hasOpenAiKey: !!(process.env.OPENAI_API_KEY?.trim()), defaultModel: process.env.GEMINI_MODEL || "gemini-flash-latest" });
+    res.json({ success: true, hasGeminiKey: !!(process.env.GEMINI_API_KEY?.trim()), hasOpenAiKey: !!(process.env.OPENAI_API_KEY?.trim()), defaultModel: process.env.GEMINI_MODEL || "gemini-3.6-flash" });
 });
 
 app.post("/api/models", async (req, res) => {
-    const defaultGemini = ["gemini-flash-latest","gemini-3.8-flash","gemini-3.6-flash","gemini-3.5-flash","gemini-2.5-flash","gemini-2.5-pro","gemini-pro-latest"];
+    const defaultGemini = ["gemini-3.6-flash","gemini-3.8-flash","gemini-3.5-flash","gemini-flash-latest","gemini-2.5-pro","gemini-pro-latest"];
     const defaultOpenAi = ["gpt-4.1-mini","gpt-4o-mini","gpt-4.1","gpt-4o","gpt-5-mini","gpt-5"];
     const provider = req.body?.provider === "openai" ? "openai" : "gemini";
     try {
@@ -293,12 +293,14 @@ app.get("/", (req, res) => {
               <option value="openai">OpenAI ChatGPT</option>
             </select>
             <select id="aiModel" class="border border-slate-200 rounded-xl p-2.5 text-sm bg-white font-medium focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+              <option value="gemini-3.6-flash">gemini-3.6-flash (추천)</option>
+              <option value="gemini-3.8-flash">gemini-3.8-flash</option>
               <option value="gemini-flash-latest">gemini-flash-latest</option>
             </select>
           </div>
           <div class="flex gap-2">
-            <input id="aiApiKey" type="password" autocomplete="off" placeholder="API 키 (비워두면 .env 자동 사용)" class="flex-1 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none">
-            <button onclick="loadModels()" class="px-4 rounded-xl bg-slate-800 hover:bg-black text-white text-xs font-bold transition whitespace-nowrap">갱신</button>
+            <input id="aiApiKey" type="password" autocomplete="off" oninput="onApiKeyInput(this.value)" placeholder="API 키 입력 (입력 시 자동 저장·연결)" class="flex-1 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+            <button onclick="handleRefreshConnection()" class="px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition whitespace-nowrap shadow-sm">연결 갱신</button>
           </div>
         </div>
       </div>
@@ -464,26 +466,95 @@ app.get("/", (req, res) => {
 </div>
 <script>
 var currentCategory="가족여행",selectedTopic="",selectedLayout="modern",currentSlides=[],currentSlideIndex=0,carouselImageUrls=[],postCurrentImageUrl="",postBodyText="",postSelectedTags=new Set(),postAllHashtags={core:[],expand:[],target:[]};
-window.onload=function(){checkConfigAndInit();};
-async function checkConfigAndInit(){
-    try{var r=await fetch("/api/config-status"),d=await r.json(),b=document.getElementById("keyBadge");
-    if(d.hasGeminiKey||d.hasOpenAiKey){b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700";b.innerText="🟢 API 키 연결됨";}
-    else{b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700";b.innerText="🟡 API 키 입력 필요";}
-    if(d.defaultModel){var s=document.getElementById("aiModel");if(s)s.value=d.defaultModel;}}catch(e){}
-    await loadModels(true);await fetchTrends();
+var isInitialized=false;
+
+function runInit(){
+    if(isInitialized)return;
+    isInitialized=true;
+    checkConfigAndInit();
 }
+if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded", runInit);
+} else {
+    runInit();
+}
+window.addEventListener("load", runInit);
+
+async function checkConfigAndInit(){
+    var savedKey=localStorage.getItem("instar_api_key");
+    if(savedKey){
+        var keyInput=document.getElementById("aiApiKey");
+        if(keyInput&&!keyInput.value)keyInput.value=savedKey;
+    }
+    await updateKeyBadge();
+    await loadModels(true);
+    await fetchTrends();
+}
+
+function onApiKeyInput(val){
+    var trimmed=String(val||"").trim();
+    if(trimmed){
+        localStorage.setItem("instar_api_key", trimmed);
+    } else {
+        localStorage.removeItem("instar_api_key");
+    }
+    updateKeyBadge();
+}
+
+async function updateKeyBadge(){
+    var b=document.getElementById("keyBadge");
+    if(!b)return;
+    var userKey=(document.getElementById("aiApiKey")?.value||"").trim();
+    if(userKey){
+        b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
+        b.innerText="🟢 사용자 키 연결됨";
+        return;
+    }
+    try{
+        var r=await fetch("/api/config-status"),d=await r.json();
+        if(d.hasGeminiKey||d.hasOpenAiKey){
+            b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
+            b.innerText="🟢 서버 키 연결됨";
+        } else {
+            b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 shadow-sm";
+            b.innerText="🟡 API 키 입력 필요";
+        }
+        if(d.defaultModel){
+            var s=document.getElementById("aiModel");
+            if(s&&!s.value)s.value=d.defaultModel;
+        }
+    }catch(e){
+        b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500";
+        b.innerText="⚪ 키 미등록";
+    }
+}
+
+async function handleRefreshConnection(){
+    await updateKeyBadge();
+    await loadModels(false);
+    await fetchTrends();
+}
+
 function getAiConfig(){return{provider:document.getElementById("aiProvider").value,apiKey:document.getElementById("aiApiKey").value.trim(),model:document.getElementById("aiModel").value};}
 function getStaticModels(p){
-    if(p==="gemini")return"<option value='gemini-flash-latest'>gemini-flash-latest</option><option value='gemini-3.8-flash'>gemini-3.8-flash</option><option value='gemini-3.6-flash'>gemini-3.6-flash</option><option value='gemini-2.5-flash'>gemini-2.5-flash</option><option value='gemini-2.5-pro'>gemini-2.5-pro</option><option value='gemini-pro-latest'>gemini-pro-latest</option>";
+    if(p==="gemini")return"<option value='gemini-3.6-flash'>gemini-3.6-flash (추천)</option><option value='gemini-3.8-flash'>gemini-3.8-flash</option><option value='gemini-3.5-flash'>gemini-3.5-flash</option><option value='gemini-flash-latest'>gemini-flash-latest</option><option value='gemini-2.5-pro'>gemini-2.5-pro</option>";
     return"<option value='gpt-4.1-mini'>gpt-4.1-mini</option><option value='gpt-4o-mini'>gpt-4o-mini</option><option value='gpt-4.1'>gpt-4.1</option><option value='gpt-4o'>gpt-4o</option>";
 }
 function onProviderChange(){document.getElementById("aiModel").innerHTML=getStaticModels(document.getElementById("aiProvider").value);loadModels(true);}
 async function loadModels(silent){
     var cfg=getAiConfig(),sel=document.getElementById("aiModel");
     if(!silent)sel.innerHTML="<option>조회 중...</option>";
-    try{var r=await fetch("/api/models",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cfg),signal:AbortSignal.timeout(10000)}),d=await r.json();
-    if(d.success&&d.models&&d.models.length){sel.innerHTML=d.models.map(function(m){return"<option value='"+m+"'>"+m+"</option>";}).join("");var pref=cfg.provider==="openai"?"gpt-4.1-mini":"gemini-flash-latest";if(d.models.includes(pref))sel.value=pref;}else throw new Error("empty");}
-    catch(e){sel.innerHTML=getStaticModels(cfg.provider);if(!silent)showError("모델 목록 불러오기 실패");}
+    try{
+        var r=await fetch("/api/models",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cfg),signal:AbortSignal.timeout(10000)}),d=await r.json();
+        if(d.success&&d.models&&d.models.length){
+            sel.innerHTML=d.models.map(function(m){return"<option value='"+m+"'>"+m+(m==="gemini-3.6-flash"?" (추천)":"")+"</option>";}).join("");
+            var pref=cfg.provider==="openai"?"gpt-4.1-mini":"gemini-3.6-flash";
+            if(d.models.includes(pref))sel.value=pref;
+        }else throw new Error("empty");
+    } catch(e){
+        sel.innerHTML=getStaticModels(cfg.provider);
+        if(!silent)showError("모델 목록을 기본값으로 로드했습니다.");
+    }
 }
 function selectCategory(cat){
     currentCategory=cat;selectedTopic="";document.getElementById("customTopic").value="";
