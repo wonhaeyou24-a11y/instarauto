@@ -277,7 +277,7 @@ app.get("/", (req, res) => {
       <h1 class="text-xl font-extrabold text-slate-800">📸 인스타그램 AI 크리에이터</h1>
       <p class="text-xs text-slate-500 mt-0.5">카테고리 선택 → AI 실시간 트렌드 생성 → 게시글 & 카드뉴스 자동 작성</p>
     </div>
-    <span id="keyBadge" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-400">키 확인 중...</span>
+    <span id="keyBadge" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 shadow-sm">🟡 API 키 입력 필요</span>
   </header>
 
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -465,6 +465,28 @@ app.get("/", (req, res) => {
   </div>
 </div>
 <script>
+window.onerror = function(msg, url, line) {
+    console.error("Client Error:", msg, line);
+    showError("스크립트 오류(" + line + "행): " + msg);
+};
+
+function safeFetch(url, opts, timeoutMs) {
+    opts = opts || {};
+    timeoutMs = timeoutMs || 15000;
+    return new Promise(function(resolve, reject) {
+        var timer = setTimeout(function() {
+            reject(new Error("네트워크 응답 시간 초과 (" + Math.round(timeoutMs/1000) + "초)"));
+        }, timeoutMs);
+        fetch(url, opts).then(function(res) {
+            clearTimeout(timer);
+            resolve(res);
+        }).catch(function(err) {
+            clearTimeout(timer);
+            reject(err);
+        });
+    });
+}
+
 var currentCategory="가족여행",selectedTopic="",selectedLayout="modern",currentSlides=[],currentSlideIndex=0,carouselImageUrls=[],postCurrentImageUrl="",postBodyText="",postSelectedTags=new Set(),postAllHashtags={core:[],expand:[],target:[]};
 var isInitialized=false;
 
@@ -481,79 +503,117 @@ if(document.readyState==="loading"){
 window.addEventListener("load", runInit);
 
 async function checkConfigAndInit(){
-    var savedKey=localStorage.getItem("instar_api_key");
-    if(savedKey){
-        var keyInput=document.getElementById("aiApiKey");
-        if(keyInput&&!keyInput.value)keyInput.value=savedKey;
-    }
+    try {
+        var savedKey = localStorage.getItem("instar_api_key");
+        if(savedKey){
+            var keyInput = document.getElementById("aiApiKey");
+            if(keyInput && !keyInput.value) keyInput.value = savedKey;
+        }
+    } catch(e) {}
     await updateKeyBadge();
     await loadModels(true);
     await fetchTrends();
 }
 
 function onApiKeyInput(val){
-    var trimmed=String(val||"").trim();
-    if(trimmed){
-        localStorage.setItem("instar_api_key", trimmed);
-    } else {
-        localStorage.removeItem("instar_api_key");
-    }
+    var trimmed = String(val || "").trim();
+    try {
+        if(trimmed){
+            localStorage.setItem("instar_api_key", trimmed);
+        } else {
+            localStorage.removeItem("instar_api_key");
+        }
+    } catch(e) {}
     updateKeyBadge();
 }
 
 async function updateKeyBadge(){
-    var b=document.getElementById("keyBadge");
-    if(!b)return;
-    var userKey=(document.getElementById("aiApiKey")?.value||"").trim();
+    var b = document.getElementById("keyBadge");
+    if(!b) return;
+    var el = document.getElementById("aiApiKey");
+    var userKey = (el && el.value) ? el.value.trim() : "";
     if(userKey){
-        b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
-        b.innerText="🟢 사용자 키 연결됨";
+        b.className = "text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
+        b.innerText = "🟢 사용자 키 연결됨";
         return;
     }
     try{
-        var r=await fetch("/api/config-status"),d=await r.json();
-        if(d.hasGeminiKey||d.hasOpenAiKey){
-            b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
-            b.innerText="🟢 서버 키 연결됨";
+        var r = await safeFetch("/api/config-status", { method: "GET" }, 5000);
+        var d = await r.json();
+        if(d.hasGeminiKey || d.hasOpenAiKey){
+            b.className = "text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 shadow-sm";
+            b.innerText = "🟢 서버 키 연결됨";
         } else {
-            b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 shadow-sm";
-            b.innerText="🟡 API 키 입력 필요";
+            b.className = "text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 shadow-sm";
+            b.innerText = "🟡 API 키 입력 필요";
         }
         if(d.defaultModel){
-            var s=document.getElementById("aiModel");
-            if(s&&!s.value)s.value=d.defaultModel;
+            var s = document.getElementById("aiModel");
+            if(s && !s.value) s.value = d.defaultModel;
         }
-    }catch(e){
-        b.className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-500";
-        b.innerText="⚪ 키 미등록";
+    } catch(e){
+        b.className = "text-[11px] font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 shadow-sm";
+        b.innerText = "🟡 API 키 입력 필요";
     }
 }
 
 async function handleRefreshConnection(){
-    await updateKeyBadge();
-    await loadModels(false);
-    await fetchTrends();
+    var btn = event ? event.target : null;
+    var orig = btn ? btn.innerText : "";
+    if(btn) btn.innerText = "연결 중...";
+    try {
+        await updateKeyBadge();
+        await loadModels(false);
+        await fetchTrends();
+    } finally {
+        if(btn) btn.innerText = orig || "연결 갱신";
+    }
 }
 
-function getAiConfig(){return{provider:document.getElementById("aiProvider").value,apiKey:document.getElementById("aiApiKey").value.trim(),model:document.getElementById("aiModel").value};}
+function getAiConfig(){
+    var elP = document.getElementById("aiProvider");
+    var elK = document.getElementById("aiApiKey");
+    var elM = document.getElementById("aiModel");
+    return {
+        provider: elP ? elP.value : "gemini",
+        apiKey: elK ? elK.value.trim() : "",
+        model: elM ? elM.value : "gemini-3.6-flash"
+    };
+}
 function getStaticModels(p){
     if(p==="gemini")return"<option value='gemini-3.6-flash'>gemini-3.6-flash (추천)</option><option value='gemini-3.8-flash'>gemini-3.8-flash</option><option value='gemini-3.5-flash'>gemini-3.5-flash</option><option value='gemini-flash-latest'>gemini-flash-latest</option><option value='gemini-2.5-pro'>gemini-2.5-pro</option>";
     return"<option value='gpt-4.1-mini'>gpt-4.1-mini</option><option value='gpt-4o-mini'>gpt-4o-mini</option><option value='gpt-4.1'>gpt-4.1</option><option value='gpt-4o'>gpt-4o</option>";
 }
-function onProviderChange(){document.getElementById("aiModel").innerHTML=getStaticModels(document.getElementById("aiProvider").value);loadModels(true);}
+function onProviderChange(){
+    var el = document.getElementById("aiProvider");
+    var m = document.getElementById("aiModel");
+    if(m && el) m.innerHTML = getStaticModels(el.value);
+    loadModels(true);
+}
 async function loadModels(silent){
-    var cfg=getAiConfig(),sel=document.getElementById("aiModel");
-    if(!silent)sel.innerHTML="<option>조회 중...</option>";
+    var cfg = getAiConfig();
+    var sel = document.getElementById("aiModel");
+    if(!sel) return;
+    if(!silent) sel.innerHTML = "<option>조회 중...</option>";
     try{
-        var r=await fetch("/api/models",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cfg),signal:AbortSignal.timeout(10000)}),d=await r.json();
-        if(d.success&&d.models&&d.models.length){
-            sel.innerHTML=d.models.map(function(m){return"<option value='"+m+"'>"+m+(m==="gemini-3.6-flash"?" (추천)":"")+"</option>";}).join("");
-            var pref=cfg.provider==="openai"?"gpt-4.1-mini":"gemini-3.6-flash";
-            if(d.models.includes(pref))sel.value=pref;
-        }else throw new Error("empty");
+        var r = await safeFetch("/api/models", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cfg)
+        }, 8000);
+        var d = await r.json();
+        if(d.success && d.models && d.models.length){
+            sel.innerHTML = d.models.map(function(m){
+                return "<option value='" + m + "'>" + m + (m === "gemini-3.6-flash" ? " (추천)" : "") + "</option>";
+            }).join("");
+            var pref = cfg.provider === "openai" ? "gpt-4.1-mini" : "gemini-3.6-flash";
+            if(d.models.includes(pref)) sel.value = pref;
+        } else {
+            throw new Error("empty");
+        }
     } catch(e){
-        sel.innerHTML=getStaticModels(cfg.provider);
-        if(!silent)showError("모델 목록을 기본값으로 로드했습니다.");
+        sel.innerHTML = getStaticModels(cfg.provider);
+        if(!silent) showError("기본 모델 목록을 불러왔습니다.");
     }
 }
 function selectCategory(cat){
@@ -566,7 +626,7 @@ async function fetchTrends(){
     if(btn)btn.disabled=true;
     list.innerHTML="<div class='flex items-center gap-2 text-xs text-indigo-500 p-2'><svg class='spin h-4 w-4 shrink-0' fill='none' viewBox='0 0 24 24'><circle class='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' stroke-width='4'/><path class='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v8z'/></svg><span>AI가 <b>"+currentCategory+"</b> 실시간 트렌드를 생성하는 중...</span></div>";
     try{
-        var r=await fetch("/api/trends",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({category:currentCategory,aiConfig:getAiConfig()}),signal:AbortSignal.timeout(22000)}),d=await r.json();
+        var r=await safeFetch("/api/trends",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({category:currentCategory,aiConfig:getAiConfig()})},25000),d=await r.json();
         if(d.errorCode==="QUOTA_EXCEEDED"||d.errorCode==="INVALID_KEY")showError(d.errorMessage||"API 오류");
         var trends=(d.success&&Array.isArray(d.trends)&&d.trends.length)?d.trends:["트렌드를 불러오지 못했습니다."];
         list.innerHTML="";
@@ -599,7 +659,7 @@ async function handleGeneratePost(){
     var topic=document.getElementById("customTopic").value.trim()||selectedTopic||currentCategory;
     setBtn("genPostBtn",true,"");document.getElementById("emptyState").classList.add("hidden");
     try{
-        var r=await fetch("/api/generate-post",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:topic,category:currentCategory,aiConfig:getAiConfig()})}),d=await r.json();
+        var r=await safeFetch("/api/generate-post",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:topic,category:currentCategory,aiConfig:getAiConfig()})},30000),d=await r.json();
         if(!d.success){showError(d.message||"게시글 생성 실패");return;}
         postCurrentImageUrl=d.imageUrl;postBodyText=d.bodyText||"";postAllHashtags=d.hashtags||{core:[],expand:[],target:[]};
         postSelectedTags=new Set([].concat(postAllHashtags.core||[],postAllHashtags.expand||[],postAllHashtags.target||[]));
@@ -644,7 +704,7 @@ async function handleGenerateCarousel(){
     var topic=document.getElementById("customTopic").value.trim()||selectedTopic||currentCategory;
     setBtn("genCardBtn",true,"");document.getElementById("emptyState").classList.add("hidden");
     try{
-        var r=await fetch("/api/generate-carousel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:topic,layout:selectedLayout,category:currentCategory,aiConfig:getAiConfig()})}),d=await r.json();
+        var r=await safeFetch("/api/generate-carousel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:topic,layout:selectedLayout,category:currentCategory,aiConfig:getAiConfig()})},35000),d=await r.json();
         if(!d.success){showError(d.message||"카드뉴스 생성 실패");return;}
         currentSlides=d.slides||[];currentSlideIndex=0;carouselImageUrls=[];
         document.getElementById("carouselCaption").value=d.caption||"";document.getElementById("carouselTopicBadge").innerText="주제: "+topic;
@@ -653,7 +713,7 @@ async function handleGenerateCarousel(){
     }catch(e){showError("카드뉴스 생성 오류: "+e.message);}
     finally{setBtn("genCardBtn",false,"<i class='fa-solid fa-layer-group'></i> 카드뉴스 생성");}
 }
-async function renderSlideImage(idx){var r=await fetch("/api/rerender-slide",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slide:currentSlides[idx],index:idx,total:currentSlides.length,layout:selectedLayout})});if(!r.ok)throw new Error((await r.json()).message||"렌더링 실패");return URL.createObjectURL(await r.blob());}
+async function renderSlideImage(idx){var r=await safeFetch("/api/rerender-slide",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slide:currentSlides[idx],index:idx,total:currentSlides.length,layout:selectedLayout})},15000);if(!r.ok)throw new Error((await r.json()).message||"렌더링 실패");return URL.createObjectURL(await r.blob());}
 async function renderAllSlides(){carouselImageUrls=[];for(var i=0;i<currentSlides.length;i++)carouselImageUrls.push(await renderSlideImage(i));updateCarouselViewer(0);}
 function updateCarouselViewer(idx){
     currentSlideIndex=idx;var url=carouselImageUrls[idx];if(!url)return;
@@ -698,4 +758,7 @@ function copyCarouselCaption(){var cap=document.getElementById("carouselCaption"
 });
 
 
-app.listen(port, () => console.log(`✅ [인스타그램 AI 크리에이터] 서버 가동 (포트: ${port})`));
+if (!process.env.VERCEL) {
+    app.listen(port, () => console.log(`✅ [인스타그램 AI 크리에이터] 서버 가동 (포트: ${port})`));
+}
+module.exports = app;
