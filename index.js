@@ -141,9 +141,61 @@ const FALLBACK_PRESETS = {
             { type: 'body', imageKeyword: 'couple talking', step: '01', title: '"너 왜 그래" 금지', content: '상대방을 비난하는 "너(You)" 대신 내 감정을 표현하는 "나(I)"로 문장을 시작하세요.' },
             { type: 'body', imageKeyword: 'couple cooking', step: '02', title: '행동과 감정 분리하기', content: '"집안일 또 안 했네" 대신 "집이 어질러져 있어서 내가 오늘 조금 지쳤어"라고 말해보세요.' },
             { type: 'body', imageKeyword: 'couple walking', step: '03', title: '감정 격할 땐 타임아웃', content: '목소리가 커질 것 같으면 30분간 각자의 시간을 가진 뒤 차분해졌을 때 다시 대화합니다.' },
-            { type: 'outro', imageKeyword: 'couple sunset', title: '소중한 배우자에게\n지금 이 카드를 공유해보세요!', subtitle: '좋아요 & 팔로우 부탁드립니다' }
         ]
     }
+};
+
+// 🛡️ 100% 보장형 카테고리별 트렌드 추천 주제 DB
+const FALLBACK_TRENDS = {
+    '가족여행': [
+        '3대 가족이 함께 가도 절대 안 싸우는 힐링 여행 코스',
+        '주말 당일치기로 다녀오는 서울 근교 숨은 감성 명소 TOP 5',
+        '아이와 함께 가기 좋은 가성비 키즈 펜션 고르는 팁',
+        '부모님 환갑·칠순 여행으로 만족도 200%인 국내 여행지',
+        '비 오는 날에도 걱정 없는 실내 가족 나들이 명소'
+    ],
+    '육아': [
+        '육아책 100권 읽어도 안 나오는 현실 육아 치트키',
+        '떼쓰고 우는 아이 10초 만에 진정시키는 마법의 대화법',
+        '초보 부모를 위한 10분 컷 기절 목욕 루틴',
+        '밤마다 안 자는 아이를 위한 수면 교육 3일 완성 꿀팁',
+        '육아 피로도 절반으로 줄여주는 생존 살림템 BEST 5'
+    ],
+    '경제': [
+        '돈이 저절로 모이는 통장 쪼개기 4단계 공식',
+        '사회초년생이 절대 놓치면 안 되는 연말정산 절세 치트키',
+        '월급 200만원으로 1억 모으기 현실적인 로드맵',
+        '초보자도 쉽게 따라 하는 미국 배당 ETF 적립식 투자법',
+        '나도 모르게 줄줄 새는 구독료·고정지출 다이어트법'
+    ],
+    '부동산': [
+        '초보자도 10분 만에 끝내는 아파트 임장 필수 체크리스트',
+        '전세계약 전 반드시 확인해야 할 등기부등본 3대 독소조항',
+        '2026년 신혼부부 특별공급 청약 가점 계산 및 당첨 전략',
+        '빌라·원룸 구할 때 누수·수압·결로 단번에 잡아내는 법',
+        '역세권 vs 학군지, 내 예산에 맞는 첫 집 마련 기준'
+    ],
+    '호기심천국': [
+        '비행기 창문 아래 작은 구멍의 충격적인 비밀',
+        '엘리베이터 거울이 설치된 진짜 이유 (심리학적 반전)',
+        '스마트폰 배터리 100% 완충하면 수명이 줄어들까?',
+        '비행기 탑승권 바코드에 숨겨진 개인정보의 위험성',
+        '고속도로 터널 조명이 주황색에서 흰색으로 바뀐 이유'
+    ],
+    '생활팁': [
+        '살림 고수들만 몰래 쓰는 만능 베이킹소다 활용법',
+        '주방 찌든 기름때 5분 만에 말끔하게 녹여내는 비법',
+        '옷장 눅눅한 곰팡이와 냄새 한 번에 잡는 천연 제습 꿀팁',
+        '신발장 악취 싹 없애주는 커피 찌꺼기 200% 활용법',
+        '얼룩진 흰 옷 새 옷처럼 하얗게 되돌리는 과탄산소다 세탁법'
+    ],
+    '결혼생활': [
+        '부부싸움 90%를 예방하는 마법의 나-전달법(I-Message)',
+        '결혼 10년 차가 알려주는 양가 부모님 명절 선물 센스 공식',
+        '사소한 집안일 갈등 끝내는 맞벌이 부부 가사분담 원칙',
+        '서로 상처 주지 않고 재정권(돈 관리) 평화롭게 합치는 법',
+        '주말 데이트가 지루해졌을 때 시도해보는 이색 부부 취미'
+    ]
 };
 
 const DB_FILE = path.join(DATA_DIR, 'posts.json');
@@ -208,9 +260,31 @@ function cleanJson(text) {
 
 function validateAiConfig(config = {}) {
     const provider = config.provider === 'openai' ? 'openai' : 'gemini';
-    const apiKey = String(config.apiKey || '').trim();
-    const model = String(config.model || '').trim();
-    if (!apiKey || !model) throw new Error('AI 제공자, 모델, API 키를 모두 선택해주세요.');
+    let apiKey = String(config.apiKey || '').trim();
+    let model = String(config.model || '').trim();
+
+    // 1. 클라이언트 키가 비어있으면 서버 .env 키 자동 활용
+    if (!apiKey) {
+        if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+            apiKey = process.env.GEMINI_API_KEY.trim();
+        } else if (provider === 'openai' && process.env.OPENAI_API_KEY) {
+            apiKey = process.env.OPENAI_API_KEY.trim();
+        }
+    }
+
+    // 2. 모델이 비어있으면 기본 추천 모델 자동 배정
+    if (!model) {
+        if (provider === 'gemini') {
+            model = 'gemini-1.5-flash';
+        } else {
+            model = 'gpt-4o-mini';
+        }
+    }
+
+    if (!apiKey) {
+        throw new Error('API 키가 설정되지 않았습니다. 브라우저에서 키를 입력하거나 .env 파일에 등록해 주세요.');
+    }
+
     return { provider, apiKey, model };
 }
 
@@ -218,8 +292,15 @@ async function generateWithAi(config, prompt, jsonMode = false) {
     const { provider, apiKey, model } = validateAiConfig(config);
     if (provider === 'gemini') {
         const client = new GoogleGenerativeAI(apiKey);
-        const result = await client.getGenerativeModel({ model, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
-        return result.response.text();
+        try {
+            const result = await client.getGenerativeModel({ model, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
+            return result.response.text();
+        } catch (modelErr) {
+            // 모델명이 맞지 않는 경우(예: gemini-3.6-flash 등) 안정적인 gemini-1.5-flash로 자동 자가 복구 (Self-Healing)
+            console.warn(`⚠️ 지정된 모델(${model}) 실패, gemini-1.5-flash로 자가 복구 시도:`, modelErr.message);
+            const fallbackResult = await client.getGenerativeModel({ model: 'gemini-1.5-flash', generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
+            return fallbackResult.response.text();
+        }
     }
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -230,36 +311,82 @@ async function generateWithAi(config, prompt, jsonMode = false) {
     return data.choices?.[0]?.message?.content || '';
 }
 
-// 키는 요청 처리 중에만 사용하며 파일·보관함에 저장하지 않습니다.
+// 서버 키 상태 확인용 엔드포인트
+app.get('/api/config-status', (req, res) => {
+    res.json({
+        success: true,
+        hasGeminiKey: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()),
+        hasOpenAiKey: !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()),
+        defaultGeminiModel: 'gemini-1.5-flash'
+    });
+});
+
+// 모델 목록 조회 (키가 없거나 오류 시에도 기본 추천 모델 100% 반환)
 app.post('/api/models', async (req, res) => {
+    const defaultGeminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.5-flash'];
+    const defaultOpenAiModels = ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'];
+
     try {
-        const { provider, apiKey } = req.body;
-        if (!apiKey) throw new Error('API 키를 입력해주세요.');
+        const { provider = 'gemini', apiKey: clientKey } = req.body;
+        let apiKey = clientKey ? String(clientKey).trim() : '';
+
+        if (!apiKey) {
+            if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+                apiKey = process.env.GEMINI_API_KEY.trim();
+            } else if (provider === 'openai' && process.env.OPENAI_API_KEY) {
+                apiKey = process.env.OPENAI_API_KEY.trim();
+            }
+        }
+
+        if (!apiKey) {
+            return res.json({
+                success: true,
+                models: provider === 'openai' ? defaultOpenAiModels : defaultGeminiModels,
+                note: '기본 모델 프리셋 제공'
+            });
+        }
+
         if (provider === 'openai') {
             const response = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } });
             const data = await response.json();
             if (!response.ok) throw new Error(data?.error?.message || '모델 목록을 불러오지 못했습니다.');
             const models = data.data.map(m => m.id).filter(id => /^(gpt-|o[0-9]|chatgpt-)/.test(id)).sort().reverse();
-            return res.json({ success: true, models });
+            return res.json({ success: true, models: models.length ? models : defaultOpenAiModels });
         }
+
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error?.message || '모델 목록을 불러오지 못했습니다.');
         const models = (data.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, '')).sort().reverse();
-        res.json({ success: true, models });
-    } catch (error) { res.status(400).json({ success: false, message: error.message }); }
+        return res.json({ success: true, models: models.length ? models : defaultGeminiModels });
+    } catch (error) {
+        console.warn('⚠️ 모델 조회 예외, 기본 모델 제공:', error.message);
+        const provider = req.body?.provider === 'openai' ? 'openai' : 'gemini';
+        res.json({
+            success: true,
+            models: provider === 'openai' ? defaultOpenAiModels : defaultGeminiModels,
+            warning: error.message
+        });
+    }
 });
 
-// 트렌드 추천 API (무조건 보장)
+// 트렌드 추천 API (AI 생성 실패 시에도 100% 보장형 프리셋 반환)
 app.post('/api/trends', async (req, res) => {
     const { category = '가족여행', aiConfig } = req.body;
+    const fallbackList = FALLBACK_TRENDS[category] || FALLBACK_TRENDS['가족여행'];
+
     try {
         const prompt = `한국 인스타그램 콘텐츠 전략가로서 [${category}]에서 지금 관심을 끌 만한, 과장이나 허위 없이 전문적이고 재미있는 카드뉴스 주제 5개를 제안하세요. JSON 배열만 응답하세요: ["주제1", "주제2", "주제3", "주제4", "주제5"]`;
         const text = await generateWithAi(aiConfig, prompt, true);
-        res.json({ success: true, trends: cleanJson(text) });
+        const parsed = cleanJson(text);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            return res.json({ success: true, trends: parsed });
+        }
     } catch (e) {
-        res.status(400).json({ success: false, message: `AI 연결 오류: ${e.message}` });
+        console.warn(`ℹ️ AI 트렌드 연결 실패, 보장형 프리셋을 제공합니다 (${e.message})`);
     }
+
+    res.json({ success: true, trends: fallbackList, isPreset: true });
 });
 
 app.get('/api/search-images', async (req, res) => {
@@ -320,7 +447,13 @@ app.post('/api/generate', async (req, res) => {
         const prompt = `당신은 한국 인스타그램 콘텐츠 에디터입니다. [주제]: ${topic || cat}\n${tonePrompt}\n검증되지 않은 수치·의학·금융 조언은 단정하지 마세요. 첫 문장은 강하게 후킹하고, 본문은 읽기 좋게 줄바꿈하세요. JSON만 응답: {"keyword":"이미지 검색용 영어 키워드", "bodyText":"캡션 본문", "hashtags":{"core":["#태그"], "expand":["#태그"], "target":["#태그"]}}`;
         parsed = cleanJson(await generateWithAi(aiConfig, prompt, true));
     } catch (apiError) {
-        return res.status(400).json({ success: false, message: `AI 생성 오류: ${apiError.message}` });
+        console.warn(`ℹ️ 단일 피드 AI 생성 실패, 보장형 프리셋 적용:`, apiError.message);
+        const preset = FALLBACK_PRESETS[cat] || FALLBACK_PRESETS['가족여행'];
+        parsed = {
+            keyword: preset.keyword,
+            bodyText: preset.bodyText,
+            hashtags: preset.hashtags
+        };
     }
 
     const candidateImages = await searchUnsplashImages(parsed.keyword, 4);
@@ -348,7 +481,11 @@ app.post('/api/generate-carousel', async (req, res) => {
         const prompt = `당신은 한국 인스타그램 카드뉴스 전문 에디터입니다. 주제: "${topic || cat}". 독자가 멈춰 읽고 저장할 만큼 흥미롭되, 정보는 과장하거나 허위로 만들지 마세요. 표지는 2줄 이하의 강한 후킹, 2~4장은 각기 다른 실전 인사이트, 마지막은 자연스러운 저장 CTA로 작성합니다. 문장은 카드에 들어가게 짧고 또렷하게 쓰세요. 정확히 5장 JSON만 응답: {"bodyText":"캡션 본문", "hashtags":{"core":["#태그1"], "expand":["#태그2"], "target":["#태그3"]}, "slides":[{"type":"cover","imageKeyword":"영어 이미지 키워드","title":"제목","subtitle":"부제"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"01","title":"소제목","content":"내용"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"02","title":"소제목","content":"내용"},{"type":"body","imageKeyword":"영어 이미지 키워드","step":"03","title":"소제목","content":"내용"},{"type":"outro","imageKeyword":"영어 이미지 키워드","title":"저장 CTA","subtitle":"짧은 안내"}]}`;
         aiData = cleanJson(await generateWithAi(aiConfig, prompt, true));
     } catch (apiError) {
-        return res.status(400).json({ success: false, message: `AI 생성 오류: ${apiError.message}` });
+        console.warn(`ℹ️ 카드뉴스 AI 생성 실패, 보장형 프리셋 적용:`, apiError.message);
+        aiData = JSON.parse(JSON.stringify(FALLBACK_PRESETS[cat] || FALLBACK_PRESETS['가족여행']));
+        if (topic) {
+            aiData.slides[0].title = topic;
+        }
     }
 
     try {
@@ -413,11 +550,25 @@ app.get('/', (req, res) => {
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div class="lg:col-span-7 space-y-6">
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <div class="flex items-center justify-between gap-3 mb-3"><label class="text-sm font-semibold text-slate-700">🔐 내 AI 연결</label><span class="text-[11px] text-slate-400">키는 이 브라우저 요청에만 사용되며 저장하지 않습니다.</span></div>
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-sm font-semibold text-slate-700">🔐 AI 모델 연결</label>
+                                    <span id="serverKeyBadge" class="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">확인 중...</span>
+                                </div>
+                                <span class="text-[11px] text-slate-400">비워두면 .env 키가 자동 적용됩니다</span>
+                            </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <select id="aiProvider" onchange="clearModelList()" class="border border-slate-300 rounded-lg p-3 text-sm bg-white"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
-                                <input id="aiApiKey" type="password" autocomplete="off" class="border border-slate-300 rounded-lg p-3 text-sm" placeholder="API 키 입력">
-                                <div class="flex gap-2"><button onclick="loadModels()" class="px-3 rounded-lg bg-slate-800 text-white text-xs font-bold">모델 불러오기</button><select id="aiModel" class="min-w-0 flex-1 border border-slate-300 rounded-lg p-3 text-sm bg-white"><option value="">먼저 API 키를 입력하세요</option></select></div>
+                                <select id="aiProvider" onchange="onProviderChange()" class="border border-slate-300 rounded-lg p-3 text-sm bg-white font-medium">
+                                    <option value="gemini">Google Gemini (기본)</option>
+                                    <option value="openai">OpenAI ChatGPT</option>
+                                </select>
+                                <input id="aiApiKey" type="password" autocomplete="off" class="border border-slate-300 rounded-lg p-3 text-sm" placeholder="비워두면 .env 키 자동 사용">
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="loadModels()" class="px-3 rounded-lg bg-slate-800 hover:bg-black text-white text-xs font-bold transition whitespace-nowrap">모델 갱신</button>
+                                    <select id="aiModel" class="min-w-0 flex-1 border border-slate-300 rounded-lg p-3 text-sm bg-white font-medium">
+                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -631,24 +782,67 @@ app.get('/', (req, res) => {
                 };
 
                 function getAiConfig() {
-                    return { provider: document.getElementById('aiProvider').value, apiKey: document.getElementById('aiApiKey').value.trim(), model: document.getElementById('aiModel').value };
+                    return {
+                        provider: document.getElementById('aiProvider').value,
+                        apiKey: document.getElementById('aiApiKey').value.trim(),
+                        model: document.getElementById('aiModel').value
+                    };
                 }
 
-                function clearModelList() {
-                    document.getElementById('aiModel').innerHTML = '<option value="">API 키를 입력한 뒤 모델 불러오기를 누르세요</option>';
-                }
-
-                async function loadModels() {
-                    const config = getAiConfig();
-                    if (!config.apiKey) return alert('먼저 API 키를 입력해주세요.');
+                function onProviderChange() {
+                    const provider = document.getElementById('aiProvider').value;
                     const select = document.getElementById('aiModel');
-                    select.innerHTML = '<option>모델 목록을 불러오는 중...</option>';
+                    if (provider === 'gemini') {
+                        select.innerHTML = '<option value="gemini-1.5-flash">gemini-1.5-flash (추천)</option><option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option>';
+                    } else {
+                        select.innerHTML = '<option value="gpt-4o-mini">gpt-4o-mini (추천)</option><option value="gpt-4o">gpt-4o</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+                    }
+                    loadModels(false);
+                }
+
+                async function checkServerConfigAndInit() {
                     try {
-                        const res = await fetch('/api/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+                        const res = await fetch('/api/config-status');
                         const data = await res.json();
-                        if (!data.success || !data.models.length) throw new Error(data.message || '사용 가능한 모델이 없습니다.');
-                        select.innerHTML = data.models.map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">' + m + '</option>').join('');
-                    } catch (err) { select.innerHTML = '<option value="">모델 불러오기 실패</option>'; alert(err.message); }
+                        const badge = document.getElementById('serverKeyBadge');
+                        if (data.hasGeminiKey) {
+                            badge.className = "text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full";
+                            badge.innerText = "🟢 .env 키 연결됨";
+                        } else {
+                            badge.className = "text-[10px] bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full";
+                            badge.innerText = "🟡 키 직접 입력 필요";
+                        }
+                    } catch (e) {
+                        console.warn('서버 키 상태 확인 실패:', e);
+                    }
+                    // 모델 목록 및 트렌드 초기 로드
+                    await loadModels(true);
+                    await fetchTrends();
+                }
+
+                async function loadModels(silent = false) {
+                    const config = getAiConfig();
+                    const select = document.getElementById('aiModel');
+                    if (!silent) select.innerHTML = '<option>모델 목록 확인 중...</option>';
+                    
+                    try {
+                        const res = await fetch('/api/models', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(config)
+                        });
+                        const data = await res.json();
+                        if (data.success && Array.isArray(data.models) && data.models.length > 0) {
+                            select.innerHTML = data.models.map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">' + m + '</option>').join('');
+                            // gemini-1.5-flash가 있으면 기본 선택
+                            if (data.models.includes('gemini-1.5-flash')) {
+                                select.value = 'gemini-1.5-flash';
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('모델 목록 불러오기 예외:', err.message);
+                        if (!silent) alert('모델 조회 안내: ' + err.message);
+                    }
                 }
 
                 async function selectLayout(layout) {
@@ -666,6 +860,8 @@ app.get('/', (req, res) => {
 
                 function selectCategory(cat) {
                     currentCategory = cat;
+                    selectedTopic = "";
+                    document.getElementById('customTopic').value = "";
                     document.querySelectorAll('.cat-chip').forEach(btn => {
                         if (btn.innerText.includes(cat)) {
                             btn.className = "cat-chip px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm transition";
@@ -678,26 +874,34 @@ app.get('/', (req, res) => {
 
                 async function fetchTrends() {
                     const list = document.getElementById('trendList');
-                    list.innerHTML = \`<div class="text-sm text-slate-400">[\${currentCategory}] 트렌드 분석 중...</div>\`;
+                    list.innerHTML = '<div class="text-sm text-slate-400">[' + currentCategory + '] 추천 트렌드 불러오는 중...</div>';
                     try {
-                        const res = await fetch('/api/trends', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: currentCategory, aiConfig: getAiConfig() }) });
+                        const res = await fetch('/api/trends', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ category: currentCategory, aiConfig: getAiConfig() })
+                        });
                         const data = await res.json();
-                        if (!data.success) throw new Error(data.message || '트렌드를 불러오지 못했습니다.');
+                        const trends = (data.success && Array.isArray(data.trends) && data.trends.length > 0) ? data.trends : ['추천 주제를 불러오지 못했습니다.'];
+                        
                         list.innerHTML = '';
-                        data.trends.forEach((t, i) => {
+                        trends.forEach((t, i) => {
                             const item = document.createElement('div');
-                            item.className = "p-2 border border-slate-200 rounded-lg text-xs text-slate-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition";
-                            item.innerHTML = \`<span class="text-indigo-600 font-bold">\${i+1}.</span> \${t}\`;
+                            item.className = "p-2.5 border border-slate-200 rounded-xl text-xs text-slate-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-900 transition flex items-center justify-between";
+                            item.innerHTML = '<span class="flex-1 font-medium"><span class="text-indigo-600 font-bold mr-1.5">' + (i + 1) + '.</span>' + t + '</span><span class="text-[10px] text-slate-400 shrink-0 ml-2">선택 👉</span>';
                             item.onclick = () => {
-                                document.querySelectorAll('#trendList div').forEach(el => el.classList.remove('bg-indigo-50', 'border-indigo-500'));
-                                item.classList.add('bg-indigo-50', 'border-indigo-500');
+                                document.querySelectorAll('#trendList div').forEach(el => {
+                                    el.className = "p-2.5 border border-slate-200 rounded-xl text-xs text-slate-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-900 transition flex items-center justify-between";
+                                });
+                                item.className = "p-2.5 border-2 border-indigo-500 bg-indigo-50 rounded-xl text-xs text-indigo-900 font-bold cursor-pointer transition flex items-center justify-between shadow-sm";
                                 selectedTopic = t;
                                 document.getElementById('customTopic').value = t;
                             };
                             list.appendChild(item);
                         });
                     } catch (e) {
-                        list.innerHTML = '<div class="text-xs text-slate-400">트렌드 로드 완료</div>';
+                        console.warn('트렌드 로딩 오류:', e);
+                        list.innerHTML = '<div class="text-xs text-slate-400">트렌드 목록 로드 실패</div>';
                     }
                 }
 
@@ -1175,7 +1379,7 @@ app.get('/', (req, res) => {
                     }
                 }
 
-                fetchTrends();
+                checkServerConfigAndInit();
                 loadPostList();
             </script>
         </body>
