@@ -1,7 +1,5 @@
 .env
-.env.local
-.env.*
 node_modules/
-.DS_Store
-npm-debug.log*
-
+data/
+public/generated/
+posts.json
