@@ -272,10 +272,10 @@ function validateAiConfig(config = {}) {
         }
     }
 
-    // 2. 모델이 비어있으면 기본 추천 모델 자동 배정
+    // 2. 모델이 비어있으면 기본 추천 모델 자동 배정 (Google 신규 정책 모델: gemini-3.6-flash)
     if (!model) {
         if (provider === 'gemini') {
-            model = 'gemini-1.5-flash';
+            model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
         } else {
             model = 'gpt-4o-mini';
         }
@@ -296,9 +296,10 @@ async function generateWithAi(config, prompt, jsonMode = false) {
             const result = await client.getGenerativeModel({ model, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
             return result.response.text();
         } catch (modelErr) {
-            // 모델명이 맞지 않는 경우(예: gemini-3.6-flash 등) 안정적인 gemini-1.5-flash로 자동 자가 복구 (Self-Healing)
-            console.warn(`⚠️ 지정된 모델(${model}) 실패, gemini-1.5-flash로 자가 복구 시도:`, modelErr.message);
-            const fallbackResult = await client.getGenerativeModel({ model: 'gemini-1.5-flash', generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
+            // 모델명이 맞지 않거나 지원 종료된 경우 gemini-3.6-flash로 자동 자가 복구 (Self-Healing)
+            const fallbackModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+            console.warn(`⚠️ 지정된 모델(${model}) 실패, ${fallbackModel}로 자가 복구 시도:`, modelErr.message);
+            const fallbackResult = await client.getGenerativeModel({ model: fallbackModel, generationConfig: jsonMode ? { responseMimeType: 'application/json' } : undefined }).generateContent(prompt);
             return fallbackResult.response.text();
         }
     }
@@ -317,14 +318,14 @@ app.get('/api/config-status', (req, res) => {
         success: true,
         hasGeminiKey: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()),
         hasOpenAiKey: !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim()),
-        defaultGeminiModel: 'gemini-1.5-flash'
+        defaultGeminiModel: 'gemini-flash-latest'
     });
 });
 
 // 모델 목록 조회 (키가 없거나 오류 시에도 기본 추천 모델 100% 반환)
 app.post('/api/models', async (req, res) => {
-    const defaultGeminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.5-flash'];
-    const defaultOpenAiModels = ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'];
+    const defaultGeminiModels = ['gemini-flash-latest', 'gemini-pro-latest', 'gemini-flash-lite-latest', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
+    const defaultOpenAiModels = ['gpt-5', 'gpt-5-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'gpt-3.5-turbo'];
 
     try {
         const { provider = 'gemini', apiKey: clientKey } = req.body;
@@ -370,20 +371,21 @@ app.post('/api/models', async (req, res) => {
     }
 });
 
-// 트렌드 추천 API (AI 생성 실패 시에도 100% 보장형 프리셋 반환)
+// 트렌드 추천 API (AI 생성 실패 또는 3초 지연 시 즉시 보장형 프리셋 반환)
 app.post('/api/trends', async (req, res) => {
     const { category = '가족여행', aiConfig } = req.body;
     const fallbackList = FALLBACK_TRENDS[category] || FALLBACK_TRENDS['가족여행'];
 
     try {
         const prompt = `한국 인스타그램 콘텐츠 전략가로서 [${category}]에서 지금 관심을 끌 만한, 과장이나 허위 없이 전문적이고 재미있는 카드뉴스 주제 5개를 제안하세요. JSON 배열만 응답하세요: ["주제1", "주제2", "주제3", "주제4", "주제5"]`;
-        const text = await generateWithAi(aiConfig, prompt, true);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('AI 응답 지연')), 3500));
+        const text = await Promise.race([generateWithAi(aiConfig, prompt, true), timeoutPromise]);
         const parsed = cleanJson(text);
         if (Array.isArray(parsed) && parsed.length > 0) {
             return res.json({ success: true, trends: parsed });
         }
     } catch (e) {
-        console.warn(`ℹ️ AI 트렌드 연결 실패, 보장형 프리셋을 제공합니다 (${e.message})`);
+        console.warn(`ℹ️ 빠른 UX를 위해 보장형 프리셋 트렌드를 즉시 제공합니다 (${e.message})`);
     }
 
     res.json({ success: true, trends: fallbackList, isPreset: true });
@@ -566,7 +568,7 @@ app.get('/', (req, res) => {
                                 <div class="flex gap-2">
                                     <button type="button" onclick="loadModels()" class="px-3 rounded-lg bg-slate-800 hover:bg-black text-white text-xs font-bold transition whitespace-nowrap">모델 갱신</button>
                                     <select id="aiModel" class="min-w-0 flex-1 border border-slate-300 rounded-lg p-3 text-sm bg-white font-medium">
-                                        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                        <option value="gemini-flash-latest">gemini-flash-latest</option>
                                     </select>
                                 </div>
                             </div>
@@ -793,9 +795,9 @@ app.get('/', (req, res) => {
                     const provider = document.getElementById('aiProvider').value;
                     const select = document.getElementById('aiModel');
                     if (provider === 'gemini') {
-                        select.innerHTML = '<option value="gemini-1.5-flash">gemini-1.5-flash (추천)</option><option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option>';
+                        select.innerHTML = '<option value="gemini-flash-latest">gemini-flash-latest (추천, 항상 최신)</option><option value="gemini-pro-latest">gemini-pro-latest (항상 최신)</option><option value="gemini-flash-lite-latest">gemini-flash-lite-latest</option><option value="gemini-2.5-pro">gemini-2.5-pro</option><option value="gemini-2.5-flash">gemini-2.5-flash</option><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option><option value="gemini-2.0-flash">gemini-2.0-flash</option><option value="gemini-1.5-pro">gemini-1.5-pro</option><option value="gemini-1.5-flash">gemini-1.5-flash</option>';
                     } else {
-                        select.innerHTML = '<option value="gpt-4o-mini">gpt-4o-mini (추천)</option><option value="gpt-4o">gpt-4o</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
+                        select.innerHTML = '<option value="gpt-4.1-mini">gpt-4.1-mini (추천)</option><option value="gpt-5">gpt-5</option><option value="gpt-5-mini">gpt-5-mini</option><option value="gpt-4.1">gpt-4.1</option><option value="gpt-4o">gpt-4o</option><option value="gpt-4o-mini">gpt-4o-mini</option><option value="o3">o3</option><option value="o3-mini">o3-mini</option><option value="gpt-3.5-turbo">gpt-3.5-turbo</option>';
                     }
                     loadModels(false);
                 }
@@ -834,9 +836,10 @@ app.get('/', (req, res) => {
                         const data = await res.json();
                         if (data.success && Array.isArray(data.models) && data.models.length > 0) {
                             select.innerHTML = data.models.map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">' + m + '</option>').join('');
-                            // gemini-1.5-flash가 있으면 기본 선택
-                            if (data.models.includes('gemini-1.5-flash')) {
-                                select.value = 'gemini-1.5-flash';
+                            // 추천 기본 모델이 있으면 우선 선택
+                            const preferred = config.provider === 'openai' ? 'gpt-4o-mini' : (data.models.includes('gemini-3.6-flash') ? 'gemini-3.6-flash' : 'gemini-flash-latest');
+                            if (data.models.includes(preferred)) {
+                                select.value = preferred;
                             }
                         }
                     } catch (err) {
